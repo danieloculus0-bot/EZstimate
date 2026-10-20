@@ -327,6 +327,117 @@ async function journalForecastScorecard(){
   }catch(e){node.append(el("p","Cannot journal scorecard: "+e.message));}
 }
 
+
+function prSelectedRequest(result){
+  const row=result.request||result;
+  byId("pr-request-id").value=row.request_id;
+  byId("pr-approve").disabled=row.status!=="draft";
+  byId("pr-dispatch").disabled=row.status!=="approved";
+  const area=byId("pr-draft-result");clear(area);
+  area.append(el("strong",row.request_id+" · "+row.status.toUpperCase()));
+  area.append(el("p","Source digest: "+row.payload_sha256));
+  for(const line of row.payload.lines)
+    area.append(el("div",line.material_key+" · "+line.quantity+" "+line.unit+
+      (line.job?" · job "+line.job:"")+
+      (line.needed_by?" · need "+line.needed_by:"")+
+      (line.source_ref?" · "+line.source_ref:""),"record"));
+  area.append(el("p","Justification: "+row.payload.justification));
+}
+function prInput(){
+  return {requested_by:byId("pr-requestor").value.trim(),
+    department:byId("pr-department").value.trim(),
+    justification:byId("pr-justification").value.trim(),
+    source_system:"EZstimate",
+    lines:[{
+      material_key:byId("pr-material").value.trim(),
+      quantity:byId("pr-quantity").value,
+      unit:byId("pr-unit").value,
+      needed_by:byId("pr-need-date").value,
+      job:byId("pr-job").value.trim(),
+      supplier_preference:byId("pr-supplier").value.trim(),
+      source_ref:byId("pr-source-ref").value.trim(),
+      description:byId("pr-description").value.trim()
+    }]};
+}
+function prUseMaterial(){
+  byId("pr-material").value=byId("price-key").value;
+  byId("pr-quantity").value=byId("price-qty").value||"1";
+  byId("pr-unit").value=byId("price-unit").value;
+  byId("pr-supplier").value=byId("price-supplier").value;
+  byId("pr-source-ref").value=byId("price-source-ref").value;
+  byId("pr-draft-result").textContent="Material details copied. Review quantity and purchasing unit, then create the request.";
+}
+async function prConnectorStatus(){
+  try{
+    const config=await req("/api/procurement/status");
+    byId("pr-connector").textContent="Approval credential "+(config.approval_configured?"configured":"not configured")+
+      " · ERP transport "+config.dispatch_mode+
+      (config.auto_dispatch_after_approval?" · sends after approval":" · no outbound connector")+
+      ". Server configuration is required before live dispatch.";
+  }catch(e){byId("pr-connector").textContent="Purchasing connector unavailable: "+e.message;}
+}
+async function prCreate(){
+  const button=byId("pr-create");button.disabled=true;
+  try{
+    const result=await req("/api/procurement/requests",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify(prInput())});
+    prSelectedRequest(result);
+    byId("pr-delivery").textContent="Draft saved; no purchase request has been sent.";
+  }catch(e){byId("pr-draft-result").textContent="Cannot draft: "+e.message;}
+  finally{button.disabled=false;}
+}
+async function prApprove(){
+  const id=byId("pr-request-id").value,credential=byId("pr-approval-token").value,
+    actor=byId("pr-approver").value.trim(),button=byId("pr-approve");
+  if(!id||!actor||!credential){byId("pr-delivery").textContent="Request, approver and approval credential are required.";return;}
+  button.disabled=true;
+  try{
+    const result=await req("/api/procurement/requests/"+encodeURIComponent(id)+"/approve",{
+      method:"POST",headers:{"Content-Type":"application/json",
+        "X-EZstimate-Approval-Token":credential},
+      body:JSON.stringify({approver:actor})});
+    prSelectedRequest(result);
+    byId("pr-delivery").textContent=result.message+" · Status: "+result.request.status+
+      (result.delivery?" · "+result.delivery.message:"");
+  }catch(e){byId("pr-delivery").textContent="Approval failed: "+e.message;}
+  finally{byId("pr-approval-token").value="";await prConnectorStatus();}
+}
+async function prDispatch(){
+  const id=byId("pr-request-id").value,credential=byId("pr-approval-token").value;
+  if(!id||!credential){byId("pr-delivery").textContent="Select an approved request and supply approval credential.";return;}
+  byId("pr-dispatch").disabled=true;
+  try{
+    const result=await req("/api/procurement/requests/"+encodeURIComponent(id)+"/dispatch",{
+      method:"POST",headers:{"X-EZstimate-Approval-Token":credential}});
+    prSelectedRequest(result);
+    byId("pr-delivery").textContent=(result.duplicate?"Already dispatched. ":"")+
+      "Status: "+result.request.status+" · "+
+      (result.request.delivery_receipt?result.request.delivery_receipt.message:"No receipt");
+  }catch(e){
+    byId("pr-delivery").textContent="Dispatch not confirmed: "+e.message+
+      ". Check the request history before any retry.";
+    try{prSelectedRequest((await req("/api/procurement/requests/"+encodeURIComponent(id))).request);}
+    catch(ignore){}
+  }finally{byId("pr-approval-token").value="";}
+}
+async function prList(){
+  try{
+    const response=await req("/api/procurement/requests");
+    const target=byId("pr-draft-result");clear(target);
+    target.append(el("strong",response.requests.length+" recent purchase requests"));
+    for(const request of response.requests){
+      const button=el("button",request.request_id+" · "+request.status+
+        " · "+request.payload.lines.length+" line(s)","secondary");
+      button.type="button";button.addEventListener("click",()=>{
+        prSelectedRequest(request);byId("pr-delivery").textContent=
+          "Selected existing request. Check status before approval or dispatch.";
+      });
+      const container=el("div",null,"record");container.append(button);
+      target.append(container);
+    }
+  }catch(e){byId("pr-draft-result").textContent="Request list unavailable: "+e.message;}
+}
+
 const today=new Date().toISOString().slice(0,10);
 byId("price-date").value=today;byId("market-date").value=today;
 byId("save-price").addEventListener("click",saveObservedPrice);
@@ -342,5 +453,11 @@ byId("sync-official").addEventListener("click",refreshOfficialFeeds);
 byId("freeze-forecast").addEventListener("click",freezePriceForecast);
 byId("score-forecasts").addEventListener("click",scoreForecasts);
 byId("journal-scorecard").addEventListener("click",journalForecastScorecard);
+byId("pr-from-price").addEventListener("click",prUseMaterial);
+byId("pr-create").addEventListener("click",prCreate);
+byId("pr-approve").addEventListener("click",prApprove);
+byId("pr-dispatch").addEventListener("click",prDispatch);
+byId("pr-list").addEventListener("click",prList);
+prConnectorStatus();
 
 core();
