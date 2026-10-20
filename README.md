@@ -13,6 +13,16 @@ EZstimate is a local-first manufacturing quote tool. It accepts customer drawing
 
 The interface uses the BEAN green / charcoal shared engineering-suite theme. See `docs/ARCHITECTURE.md` for ForgeVault, Axiom, and BEAN boundaries.
 
+## Price Memory + Material Forecast (new local module)
+
+EZstimate now remembers verified, dated material prices from supplier quotes, purchase orders and invoices using a **persistent local SQLite database**. Search by exact ERP material key and unit; see supplier/source/age, and explicitly copy a matching **per-each** price into a draft quote line. Other purchase units require a real per-part yield conversion before pricing.
+
+The new **Material Forecast** panel stores dated diesel, steel/aluminum indexes, supplier lead days and sourced sentiment readings and generates transparent **market-pressure watches**. It does not invent future material prices or silently raise a customer's quote. The optional **real BEAN Core** bridge can journal these market observations for later evidence-based outcome checking; model inference and forecast learning are not claimed yet.
+
+The old MID JobBOSS material-demand/shortage/need-date logic is mapped for a follow-on adapter. The first build accepts **manual market observations**; it does not yet fetch live EIA/BLS feeds or import the MID workbook automatically.
+
+**These persistent functions run only in the [local Python build](#quickstart). GitHub Pages remains a static browser demo without a private price database.** Full [data contract and roadmap](docs/MATERIAL_INTELLIGENCE.md).
+
 ## Quickstart
 
 ```bash
