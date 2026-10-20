@@ -190,6 +190,8 @@ def journal_forecast_outcomes():
         return jsonify({"error": "BEAN Core journal unavailable", "reason": type(exc).__name__}), 503
 
 def main():
+    from .auto_refresh import start_market_refresh
+    start_market_refresh()
     app.run(host="127.0.0.1", port=int(os.environ.get("EZSTIMATE_PORT", "8765")), debug=False)
 
 if __name__ == "__main__":
