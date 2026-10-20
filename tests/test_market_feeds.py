@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from ezstimate.market_feeds import (parse_bls, parse_eia, refresh_official_feeds,
                                   FeedError, DIESEL_SERIES, SOURCES)
-from ezstimate.pricing import market_pressure
+from ezstimate.pricing import market_pressure, record_market_signal
 from ezstimate.server import app
 
 
@@ -82,6 +82,20 @@ class OfficialFeedsTest(unittest.TestCase):
         watch=market_pressure("steel",as_of="2026-03-01")
         self.assertEqual(watch["risk"],"high")
         self.assertIsNone(watch["forecasted_price"])
+
+    def test_manual_index_scale_cannot_mix_with_official_bls_index(self):
+        refresh_official_feeds(fetch_json=self.fake_fetch,
+                               eia_key="fixture-key",today=date(2026,3,1))
+        record_market_signal({"series":"steel_market_index","value":"1.00",
+                              "effective_date":"2026-02-18","source":"manual unrelated index"})
+        record_market_signal({"series":"diesel_usd_per_gallon","value":"100.00",
+                              "effective_date":"2026-02-18","source":"manual fleet fuel invoice"})
+        report=market_pressure("steel",as_of="2026-03-01")
+        steel=next(x for x in report["factors"] if x["series"]=="steel_market_index")
+        diesel=next(x for x in report["factors"] if x["series"]=="diesel_usd_per_gallon")
+        self.assertEqual(steel["latest"]["source"],"BLS:PPI:WPU1017")
+        self.assertTrue(diesel["latest"]["source"].startswith("EIA:petroleum/pri/gnd:"))
+        self.assertEqual(report["risk"],"high")
 
     def test_no_eia_key_is_explicit_not_a_fake_zero(self):
         j=refresh_official_feeds(fetch_json=self.fake_fetch,eia_key="",
