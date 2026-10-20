@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080d0c">
+<title>EZstimate | BEAN Engineering Suite</title><link rel="stylesheet" href="/style.css"><script defer src="/app.js"></script></head>
+<body><a href="#main" class="skip">Skip to workbench</a><div class="shell">
+<aside class="rail"><div class="brand"><div class="brand-mark">EZ</div><div>ENGINEERING<br><b>SUITE</b></div></div>
+<div class="rail-label">WORKFLOW</div>
+<nav><a href="#import">01&nbsp; Import</a><a href="#review">02&nbsp; Review</a><a href="#cost">03&nbsp; Cost</a><a href="#bean">04&nbsp; BEAN</a></nav>
+<div class="rail-foot"><span class="dot"></span>LOCAL FIRST<br>Experimental alpha</div></aside>
+<main id="main"><header class="top"><b>EZstimate</b> / Manufacturing estimating <span id="connection">BEAN status checking</span></header>
+<div class="content">
+<section class="hero"><div class="eyebrow">SOURCE-TRACEABLE QUOTING</div><h1>Know what you're <em>quoting.</em></h1>
+<p>Pull the information out of drawings, bills of material and purchase orders. Review what was found, then build a quote using actual costs and source evidence.</p>
+<div class="chips"><span>PDF + BOM</span><span>DRAWING REVISION</span><span>COST LITERACY</span><span>BEAN CONNECTOR</span></div></section>
+<section id="import"><div class="section-top"><div><div class="eyebrow">01 / INGEST</div><h2>Import documents</h2></div><span class="tag">PROPOSED DATA</span></div>
+<div class="panel upload"><div><strong>Drawing PDFs, customer POs, BOM files</strong><small>Supports PDF, CSV and XLSX. No remote document upload.</small></div>
+<input id="files" type="file" accept=".pdf,.csv,.xlsx" multiple><button id="scan" class="primary">Inspect documents</button></div>
+<p id="message" role="status" class="notice">No documents inspected yet.</p></section>
+<section id="review"><div class="section-top"><div><div class="eyebrow">02 / VERIFY</div><h2>Review extracted evidence</h2></div><span class="tag">HUMAN VERIFICATION</span></div>
+<div class="two"><div class="panel"><h3>Fields &amp; BOM sources</h3><div id="documents" class="stack">No documents loaded.</div></div>
+<div class="panel"><h3>Exceptions &amp; conflicts</h3><div id="exceptions" class="stack">Import documents to see findings.</div></div></div></section>
+<section id="cost"><div class="section-top"><div><div class="eyebrow">03 / CALCULATE</div><h2>Draft cost &amp; selling price</h2></div><span class="tag">NO INVENTED PRICES</span></div>
+<div class="panel"><p class="hint">Enter material cost, labor hours and shop rate. Outside costs, setup, scrap and gross margin are explicit editable assumptions. Gross margin is not markup.</p>
+<div class="scroll"><table><thead><tr><th>Part / Source</th><th>Qty</th><th>Material $/ea</th><th>Labor h/ea</th><th>Shop $/h</th><th>Outside $/ea</th><th>Setup $/lot</th><th>Scrap %</th><th>Margin %</th><th></th></tr></thead><tbody id="lines"></tbody></table></div>
+<div class="actions"><button id="addline" class="secondary">+ Add line</button><button id="calculate" class="primary">Calculate draft</button></div></div>
+<div class="panel total-box"><div><span class="eyebrow">DRAFT ESTIMATE · USD</span><p id="quote-status">Cost inputs required</p></div><strong id="total">N/A</strong></div>
+<div id="quote-details" class="stack"></div><div class="actions"><button id="export" class="secondary" disabled>Export draft JSON</button><small>Taxes and freight unknown. Draft is never an approved quote.</small></div></section>
+<section id="bean"><div class="section-top"><div><div class="eyebrow">04 / REASON</div><h2>BEAN review</h2></div><span class="tag">ADVISORY ONLY</span></div>
+<div class="bean-panel"><img class="mascot" src="/bean-icon.svg" alt="BEAN smiling green mascot">
+<div><h3>BEAN <small id="bean-mode">Local checks only</small></h3><p>Identify unresolved estimating questions. When actual BEAN Core is installed, you can explicitly journal reviewed source evidence into its persistent memory.</p>
+<div class="actions"><button id="review-bean" class="primary">Review draft</button><button id="journal-bean" class="secondary" disabled>Journal to BEAN Core</button></div>
+<div id="bean-findings" class="findings">No review run. Local checks are not autonomous BEAN reasoning.</div></div></div></section>
+</div><footer>EZstimate alpha · Traceable evidence · Human-reviewed quoting · Part of the BEAN engineering suite</footer></main></div></body></html>
