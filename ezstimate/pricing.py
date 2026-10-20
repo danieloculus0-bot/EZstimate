@@ -218,10 +218,30 @@ def market_pressure(family="steel", as_of=None, path=None):
     series = ["diesel_usd_per_gallon", "supplier_lead_days", "sentiment_score"]
     if family in {"steel", "aluminum"}:
         series.append(f"{family}_market_index")
+    # Never compare different publishers or mix a manually entered index scale
+    # with a BLS PPI (or manually entered fuel cost with an EIA retail series).
+    sampled = {}
     with _connect(path) as db:
-        sampled = {s: [dict(r) for r in db.execute(
-            """SELECT * FROM market_signals WHERE series=? AND effective_date<=?
-               ORDER BY effective_date DESC, id DESC LIMIT 2""", (s, day))] for s in series}
+        for name in series:
+            rows = [dict(r) for r in db.execute(
+                """SELECT * FROM market_signals WHERE series=? AND effective_date<=?
+                   ORDER BY effective_date DESC, id DESC LIMIT 100""", (name, day))]
+            official = ("BLS:PPI:" if name.endswith("_market_index")
+                        else "EIA:petroleum/pri/gnd:" if name=="diesel_usd_per_gallon" else "")
+            if official and any(r["source"].startswith(official) for r in rows):
+                rows = [r for r in rows if r["source"].startswith(official)]
+            if rows:
+                source = rows[0]["source"]
+                rows = [r for r in rows if r["source"] == source]
+            seen_dates = set()
+            history = []
+            for row in rows:
+                if row["effective_date"] not in seen_dates:
+                    history.append(row)
+                    seen_dates.add(row["effective_date"])
+                if len(history) == 2:
+                    break
+            sampled[name] = history
     score, factors, reasons = 0, [], []
     for s, history in sampled.items():
         if not history:
