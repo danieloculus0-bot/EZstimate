@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from .engine import inspect_document, price_quote, review_package
 from .bean import local_review, core_status, journal, journal_market_review
 from .pricing import remember_price, price_history, record_market_signal, market_pressure, database_path
+from .mid_adapter import preview_mid
 
 ROOT = Path(__file__).resolve().parent.parent
 app = Flask(__name__, static_folder=None)
@@ -76,6 +77,16 @@ def bean_review():
                             "detail": type(exc).__name__}), 503
     return jsonify(result)
 
+
+@app.post("/api/pricing/mid-preview")
+def mid_workbook_preview():
+    upload = request.files.get("file")
+    if upload is None or not upload.filename:
+        return jsonify({"error": "Provide an MID XLSX workbook"}), 400
+    try:
+        return jsonify(preview_mid(upload.filename, upload.read()))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
 
 @app.get("/api/pricing/status")
 def pricing_status():
