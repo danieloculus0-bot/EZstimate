@@ -11,7 +11,7 @@ class PrivateArtifactsNeverPublished(unittest.TestCase):
     def test_no_customer_artifact_files_are_tracked(self):
         # Inspect tracked files, not local ignored/private diagnostic fixtures.
         proc = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True)
-        paths = [p.decode("utf-8", errors="replace") for p in proc.stdout.split(b"\\0") if p]
+        paths = [p.decode("utf-8", errors="replace") for p in proc.stdout.split(bytes([0])) if p]
         flagged = [p for p in paths if Path(p).suffix.lower() in FORBIDDEN
                    or any(part.lower() in FORBIDDEN_DIRS for part in Path(p).parts)]
         self.assertEqual(flagged, [], "Private/drawing file tracked by Git: " + ", ".join(flagged))
