@@ -25,6 +25,16 @@ The old MID JobBOSS material-demand/shortage/need-date data is now supported by 
 
 **These persistent functions run only in the [local Python build](#quickstart). GitHub Pages remains a static browser demo without a private price database.** Full [data contract and roadmap](docs/MATERIAL_INTELLIGENCE.md).
 
+## ERP-neutral purchase requests (new)
+
+The local **05 Purchasing** section now drafts and records source-traceable material purchase requests, including job, material, quantity, purchasing unit, need date, requestor, and justification. Requests stay **draft** until the operator supplies a configured approval credential and an approver name. Approval freezes the document digest; with a configured transport it **automatically dispatches** the approved PR.
+
+- **Outbox adapter:** exports approved requests as CSV or JSON for a purchasing team or ERP import service. `exported` does not mean it was accepted by an ERP.
+- **HTTPS adapter:** sends a stable idempotency-keyed request to a configured HTTPS ERP/gateway endpoint. `endpoint_delivered` means a successful HTTP transport, **not** confirmation that the ERP created a native requisition.
+- **Uncertain delivery:** retains the source and warns rather than silently retrying a request after timeout. Real ERP-specific acknowledgement, field mapping and full approval RBAC require their own adapters and auth configuration.
+
+There is **no actual supplier purchase order issuance** in this build. No outbound sending happens by default without configuration. Setup, audit design, and integration contract: [ERP purchase requests](docs/ERP_PURCHASE_REQUESTS.md).
+
 ## Quickstart
 
 ```bash
@@ -48,7 +58,7 @@ python -m unittest discover -s tests -v
 - Missing-cost and document-conflict warnings with review status, never simulated confidence
 - Local BEAN Core journal connection if the real module is available (not a pretend generative assistant)
 
-**Not yet:** OCR, fully automatic table recognition for arbitrary drawing formats, validated manufacturer pricing, connected historical ERP costs, PO acceptance, vendor purchasing, CAD mass estimation, or released quote authorization. All extracted fields need human review, especially tolerances and processes. Public fixtures and tests are synthetic; never commit customer drawings, prices, or POs.
+**Not yet:** OCR, fully automatic table recognition for arbitrary drawing formats, validated manufacturer pricing, connected historical ERP costs, native ERP-specific PR acceptance and supplier PO issuance, CAD mass estimation, or released quote authorization. All extracted fields need human review, especially tolerances and processes. Public fixtures and tests are synthetic; never commit customer drawings, prices, or POs.
 
 ## Verified engineering-suite wiring (2026-10-20)
 
