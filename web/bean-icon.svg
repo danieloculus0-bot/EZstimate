@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" aria-hidden="true" role="img">
+            <defs>
+              <linearGradient id="beanBody" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#8fe86a"/>
+                <stop offset="55%" stop-color="#66cc4d"/>
+                <stop offset="100%" stop-color="#3ea53f"/>
+              </linearGradient>
+              <linearGradient id="beanShine" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(255,255,255,.95)"/>
+                <stop offset="100%" stop-color="rgba(255,255,255,.2)"/>
+              </linearGradient>
+              <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+                <feDropShadow dx="0" dy="18" stdDeviation="16" flood-color="rgba(37,113,44,.22)"/>
+              </filter>
+            </defs>
+
+            <g filter="url(#softShadow)">
+              <path d="M204 48c50 0 92 35 92 92 0 23-7 45-19 61-11 14-16 30-15 46 2 41-25 81-88 81-68 0-118-41-118-108 0-26 9-50 24-69 13-17 31-26 46-40 21-19 37-63 78-63z"
+                    fill="url(#beanBody)"/>
+              <path d="M142 88c-31 16-54 53-54 93 0 16 4 31 11 45"
+                    fill="none" stroke="rgba(18,56,18,.20)" stroke-width="11" stroke-linecap="round"/>
+
+              <ellipse cx="141" cy="113" rx="56" ry="30" fill="rgba(255,255,255,.22)" transform="rotate(-25 141 113)"/>
+
+              <ellipse cx="145" cy="168" rx="8" ry="12" fill="#19321b"/>
+              <ellipse cx="214" cy="171" rx="8" ry="12" fill="#19321b"/>
+              <circle cx="142" cy="164" r="2.2" fill="#ffffff"/>
+              <circle cx="211" cy="167" r="2.2" fill="#ffffff"/>
+
+              <path d="M146 211c13 14 49 14 62 0" fill="none" stroke="#18341b" stroke-width="7" stroke-linecap="round"/>
+
+              <path d="M197 51c10-18 32-26 51-23-13 10-21 18-27 31" fill="none" stroke="#58b848" stroke-width="10" stroke-linecap="round"/>
+              <path d="M216 45c17-18 42-21 61-12-20 4-33 14-42 25" fill="none" stroke="#7ed957" stroke-width="10" stroke-linecap="round"/>
+
+              <ellipse cx="111" cy="209" rx="12" ry="7" fill="rgba(255,255,255,.18)"/>
+              <ellipse cx="242" cy="209" rx="12" ry="7" fill="rgba(255,255,255,.18)"/>
+            </g>
+          </svg>
