@@ -4,7 +4,7 @@
 
 - **ForgeVault/PDM** is the future controlled source for drawing revisions, file identities, immutable versions and document hashes. Alpha users upload copies manually; no live PDM API integration is claimed.
 - **EZstimate** parses selectable PDF text, scans likely title-block regions and material-grade tokens, recognizes machine-readable PDF tables and CSV/XLSX BOM columns, reports candidates with source filenames/page or row, and builds costed *drafts*.
-- **Axiom** will own released ERP estimate/job/PO entities and production actuals. EZstimate does not create orders or alter ERP data.
+- **Axiom** owns released ERP estimate/job/PO entities and production actuals. EZstimate now stores **draft/approved purchase requests** in a local SQLite audit log; with an explicitly configured outbound adapter, approved PRs are exported to a file outbox or delivered to a configured HTTPS endpoint. This is not a supplier PO, native ERP acceptance, or unauthorized ERP database mutation.
 - **BEAN Core** can receive actual observation events when installed in the same local environment and explicitly enabled via `EZSTIMATE_BEAN_DB`. This is implemented through `bean.integration.BeanReasoningLayer.record_event`, **not** a mock LLM answer. Observations retain source names, candidate field values and reference locations. The default review list remains clearly identified as EZstimate deterministic checks, not autonomous BEAN inference.
 
 ## Pricing formula and critical unknowns
@@ -34,3 +34,7 @@ Axiom's local module at superforge/integrations/ezstimate_quote.py imports an ex
 ## Price Memory and Material Forecast (implemented 2026-10-20)
 
 See [MATERIAL_INTELLIGENCE.md](MATERIAL_INTELLIGENCE.md). The local Python app uses `ezstimate/pricing.py`, a SQLite database stored outside the repository by default, and `/api/pricing/*` routes. A user can explicitly choose a historical **per-each** unit cost for a quote line. There is no silent cost escalation from sentiment, fuel or commodity pressure. BEAN Core can receive actual evidence via `journal_market_review`; it currently stores observations, not tested future predictions. The old MID JobBOSS forecast fields now have an in-memory read-only XLSX preview adapter and browser UI. It recognizes material demand events, risk-register data and buyer action queues, retaining source sheet/row. It does not persist inventory projections, change ERP or infer a material price.
+
+## ERP-neutral purchase requisitions
+
+See [ERP_PURCHASE_REQUESTS.md](ERP_PURCHASE_REQUESTS.md). The canonical `axiom.purchase_request.v1` material/job request schema and approval SHA-256 separate request generation, human approval and dispatch. The `ERP_ADAPTER` transport contract currently supports offline JSON/CSV outbox and configured HTTPS JSON delivery, with stable request IDs and no automatic retry for uncertain network outcomes. Native ERP purchase-requisition response mapping/acceptance receipts and an authenticated enterprise RBAC approval directory are **not implemented**. The static Pages demo does not dispatch purchases.
