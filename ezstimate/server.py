@@ -9,6 +9,9 @@ from .pricing import remember_price, price_history, record_market_signal, market
 from .mid_adapter import preview_mid
 from .market_feeds import refresh_official_feeds, SOURCES, DIESEL_SERIES
 from .forecast import freeze_forecast, evaluate_forecasts
+from .procurement import (create_request, get_request, recent_requests,
+                          approve_and_dispatch, dispatch_request)
+from .erp_adapters import DispatchError
 
 ROOT = Path(__file__).resolve().parent.parent
 app = Flask(__name__, static_folder=None)
@@ -188,6 +191,63 @@ def journal_forecast_outcomes():
         return jsonify({"error": str(exc)}), 400
     except (ImportError, RuntimeError, OSError) as exc:
         return jsonify({"error": "BEAN Core journal unavailable", "reason": type(exc).__name__}), 503
+
+
+@app.get("/api/procurement/status")
+def procurement_status():
+    mode=os.environ.get("EZSTIMATE_ERP_MODE","").lower()
+    return jsonify({"approval_configured":bool(os.environ.get("EZSTIMATE_APPROVAL_TOKEN")),
+                    "dispatch_mode":mode or "not_configured",
+                    "outbound_configured":mode in ("outbox","https"),
+                    "auto_dispatch_after_approval":mode in ("outbox","https"),
+                    "erp_accepted_not_asserted":True})
+
+@app.post("/api/procurement/requests")
+def new_purchase_request():
+    try:
+        result=create_request(request.get_json(silent=True))
+        return jsonify(result),201 if result["new"] else 200
+    except (ValueError,TypeError) as exc:
+        return jsonify({"error":str(exc)}),400
+
+@app.get("/api/procurement/requests")
+def list_purchase_requests():
+    return jsonify(recent_requests())
+
+@app.get("/api/procurement/requests/<request_id>")
+def purchase_request_details(request_id):
+    try:
+        return jsonify(get_request(request_id))
+    except ValueError as exc:
+        return jsonify({"error":str(exc)}),404
+
+@app.post("/api/procurement/requests/<request_id>/approve")
+def approve_purchase_request(request_id):
+    body=request.get_json(silent=True)
+    if not isinstance(body,dict):
+        return jsonify({"error":"JSON object required"}),400
+    try:
+        result=approve_and_dispatch(request_id,body.get("approver"),
+                                    request.headers.get("X-EZstimate-Approval-Token"),
+                                    path=None)
+        return jsonify(result)
+    except PermissionError as exc:
+        return jsonify({"error":str(exc)}),403
+    except (ValueError,TypeError) as exc:
+        return jsonify({"error":str(exc)}),400
+
+@app.post("/api/procurement/requests/<request_id>/dispatch")
+def dispatch_purchase_request(request_id):
+    try:
+        result=dispatch_request(request_id,
+            request.headers.get("X-EZstimate-Approval-Token"))
+        return jsonify(result)
+    except PermissionError as exc:
+        return jsonify({"error":str(exc)}),403
+    except (ValueError,TypeError) as exc:
+        return jsonify({"error":str(exc)}),400
+    except DispatchError as exc:
+        return jsonify({"error":str(exc),"delivery_unknown":exc.uncertain}),502
 
 def main():
     from .auto_refresh import start_market_refresh
