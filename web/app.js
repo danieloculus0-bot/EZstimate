@@ -1,6 +1,6 @@
 "use strict";
 // EZstimate browser client, backed by local Python quote engine.
-const st={documents:[],issues:[],rows:[],quote:null,bean:null};
+const st={documents:[],issues:[],rows:[],quote:null,bean:null,priceCandidate:null};
 const byId=id=>document.getElementById(id);
 const cols=["part_number","quantity","material_cost_each","labor_hours_each","shop_rate_per_hour",
             "outside_cost_each","setup_cost_total","scrap_pct","margin_pct"];
@@ -35,6 +35,14 @@ function renderRows(){
    remove.addEventListener("click",()=>{st.rows.splice(index,1);st.quote=null;byId("export").disabled=true;renderRows();});
    td.append(remove);tr.append(td);t.append(tr);
  });
+ const target=byId("price-line");
+ if(target){
+   const prior=target.value;clear(target);
+   const defaultOption=el("option","Select a quote line");defaultOption.value="";target.append(defaultOption);
+   st.rows.forEach((row,index)=>{const o=el("option",(index+1)+": "+(row.part_number||"Unnamed"));o.value=String(index);target.append(o);});
+   target.value=prior && Number(prior)<st.rows.length?prior:"";
+   byId("apply-price").disabled=!(st.priceCandidate&&st.priceCandidate.price_unit==="ea"&&target.value!=="");
+ }
 }
 function renderDocs(){
  clear(byId("documents"));clear(byId("exceptions"));
@@ -132,4 +140,106 @@ byId("calculate").addEventListener("click",calculate);
 byId("review-bean").addEventListener("click",()=>beanReview(false));
 byId("journal-bean").addEventListener("click",()=>beanReview(true));
 byId("export").addEventListener("click",save);
+
+function priceRequestBody(){
+  return {material_key:byId("price-key").value.trim(),supplier:byId("price-supplier").value.trim(),
+    source_type:byId("price-source-type").value,source_ref:byId("price-source-ref").value.trim(),
+    effective_date:byId("price-date").value,unit_price:byId("price-value").value,
+    quantity:byId("price-qty").value,price_unit:byId("price-unit").value,currency:"USD"};
+}
+function pricingMessage(msg,bad=false){
+  const node=byId("price-history");node.textContent=msg;
+  node.className="findings"+(bad?" notice error":"");
+}
+async function loadHistoricalPrices(){
+  st.priceCandidate=null;byId("apply-price").disabled=true;
+  try{
+    const key=byId("price-key").value.trim(),unit=byId("price-unit").value;
+    const j=await req("/api/pricing/prices?material_key="+encodeURIComponent(key)+
+      "&price_unit="+encodeURIComponent(unit));
+    const node=byId("price-history");clear(node);
+    node.append(el("strong",j.history.length+" source-matched price record(s)"));
+    if(!j.candidate){node.append(el("p","No previous price for this exact material key and unit."));return;}
+    const p=j.candidate;st.priceCandidate=p;
+    node.append(el("p","Most recent: $"+p.unit_price+"/"+p.price_unit+" from "+p.supplier+
+      " · "+p.source_type+" "+p.source_ref+" · "+p.effective_date+
+      " ("+p.age_days+" days old)"+(p.stale_90d?" · STALE >90 DAYS":"")));
+    for(const row of j.history.slice(0,8))
+      node.append(el("div",row.effective_date+" · $"+row.unit_price+"/"+row.price_unit+
+        " · "+row.supplier+" · "+row.source_type+" "+row.source_ref,"record"));
+    node.append(el("p","Reference only. No price has been applied to the quote."));
+    byId("apply-price").disabled=!(p.price_unit==="ea"&&byId("price-line").value!=="");
+  }catch(e){pricingMessage(e.message,true);}
+}
+async function saveObservedPrice(){
+  try{
+    const j=await req("/api/pricing/prices",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(priceRequestBody())});
+    pricingMessage(j.new?"Verified supplier price retained in local SQLite.":"This source is already recorded.");
+    await loadHistoricalPrices();
+  }catch(e){pricingMessage(e.message,true);}
+}
+function applyHistoryToLine(){
+  const rowId=byId("price-line").value,p=st.priceCandidate;
+  if(!p||p.price_unit!=="ea"||rowId===""||!st.rows[Number(rowId)]){
+    pricingMessage("Choose a price-per-each candidate and an estimate line first.",true);return;
+  }
+  // Deliberate user action; there is no unit conversion or silent autofill.
+  st.rows[Number(rowId)].material_cost_each=p.unit_price;
+  st.rows[Number(rowId)].source=(st.rows[Number(rowId)].source||"manual")+
+    " | price evidence: "+p.source_type+" "+p.source_ref;
+  st.quote=null;byId("export").disabled=true;byId("total").textContent="N/A";
+  byId("quote-status").textContent="Historic unit cost applied manually. Recalculate and verify.";
+  renderRows();pricingMessage("Applied $"+p.unit_price+"/ea from "+p.source_ref+
+    " to line "+(Number(rowId)+1)+". Check material identity and quantities before releasing a quote.");
+}
+function marketRecord(){
+  return {series:byId("market-series").value,value:byId("market-value").value,
+    effective_date:byId("market-date").value,source:byId("market-source").value.trim()};
+}
+async function saveSignal(){
+  try{
+    const j=await req("/api/pricing/signals",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(marketRecord())});
+    byId("market-results").textContent=j.new?"Dated market reading stored locally.":"That reading already exists.";
+    await assessPressure();
+  }catch(e){byId("market-results").textContent="Reading not saved: "+e.message;}
+}
+async function assessPressure(){
+  const node=byId("market-results");
+  try{
+    const j=await req("/api/pricing/pressure?family="+encodeURIComponent(byId("market-family").value));
+    clear(node);node.append(el("strong","Market pressure: "+j.risk.toUpperCase()+
+      " · score "+j.pressure_score+" · "+j.comparison_series+" comparable series"));
+    for(const item of j.factors){
+      const info=item.status==="missing"?"No data":
+        (item.latest.value+" "+item.latest.unit+" as of "+item.latest.effective_date+
+        " from "+item.latest.source+(item.change_pct===null?" · no comparison yet":
+        " · change "+item.change_pct+"%")+
+        (item.status==="stale"?" · STALE":""));
+      node.append(el("div",item.series+": "+info,"record"));
+    }
+    node.append(el("p",j.disclaimer));
+  }catch(e){node.textContent="Market pressure unavailable: "+e.message;}
+}
+async function journalPressure(){
+  const node=byId("market-results");
+  try{
+    const j=await req("/api/bean/market-observation",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({family:byId("market-family").value})});
+    node.append(el("p",j.journal.connected?"BEAN Core journal event "+j.journal.event_id+
+      " recorded. Market finding remains advisory.":"BEAN Core is not connected: "+j.journal.reason));
+  }catch(e){node.append(el("p","Cannot journal to BEAN: "+e.message));}
+}
+const today=new Date().toISOString().slice(0,10);
+byId("price-date").value=today;byId("market-date").value=today;
+byId("save-price").addEventListener("click",saveObservedPrice);
+byId("find-price").addEventListener("click",loadHistoricalPrices);
+byId("price-line").addEventListener("change",()=>{byId("apply-price").disabled=
+  !(st.priceCandidate&&st.priceCandidate.price_unit==="ea"&&byId("price-line").value!=="");});
+byId("apply-price").addEventListener("click",applyHistoryToLine);
+byId("save-signal").addEventListener("click",saveSignal);
+byId("assess-pressure").addEventListener("click",assessPressure);
+byId("market-bean").addEventListener("click",journalPressure);
+
 core();
