@@ -60,9 +60,9 @@ The first versioned MID **XLSX read-only adapter** is now available at \`/api/pr
 4. Promote a forecasting rule only when its improvement over a simple historical baseline is demonstrated on holdout periods.
 5. Let BEAN propose a reserve or re-quote warning, but leave the estimator's entered cost and final quote authorization unchanged unless the operator elects a change.
 
-## Live data integration (not yet implemented)
+## Live data integration and future enrichment
 
-A future approved adapter can retrieve public diesel and commodity producer-price series from documented, licensed sources (such as EIA and BLS/FRED), recording provider, series ID, publication date, unit, timestamp and cache freshness. Sources are not one-to-one predictors of fabrication stock costs. Sector news and sentiment need a documented scoring method plus attribution before they are promoted into a quantitative feature. Supplier lead times and local surcharges still require purchasing data.
+The official **EIA/BLS API ingestion is now implemented** in the local server, as documented below. These economic indexes are not one-to-one predictors of fabrication stock costs. The remaining work includes stronger source vintage/revision reconciliation, richer source metadata and freshness reporting, fully automated supplier invoice import, statistically validated demand/price forecasting, and source-backed industry news/sentiment scoring. Supplier lead times and local surcharges still need purchasing data.
 
 **GitHub Pages** serves the stand-alone, browser-side estimate demo. It has no local SQLite or BEAN Core process. The persistent Price Memory workbench runs in the **Python local build** only.
 
