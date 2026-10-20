@@ -58,6 +58,11 @@
 </div>
 <div class="actions"><button id="save-signal" class="secondary">Record reading</button><button id="assess-pressure" class="primary">Assess market pressure</button></div>
 <div id="market-results" class="findings" role="status">No assessment yet. Import at least two dated observations for trend analysis.</div>
+<div class="mid-import"><strong>MID / JobBOSS material forecast workbook</strong>
+<p class="hint">Import your old Material Intelligence Dashboard (.xlsx) to preview demand events, shortages and buy-now actions. No pricing records are inferred and the workbook stays local.</p>
+<input type="file" id="mid-file" accept=".xlsx">
+<button class="secondary" id="mid-preview">Preview MID workbook</button>
+<div id="mid-results" class="findings" role="status">No MID workbook loaded.</div></div>
 <div class="actions"><button id="market-bean" class="secondary">Journal pressure evidence to BEAN</button></div>
 <p class="hint">Initial build: manual observations, not a live commodity or diesel data feed. No automatic quote markup.</p>
 </div></div></section>
