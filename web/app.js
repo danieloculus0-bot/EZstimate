@@ -257,6 +257,76 @@ async function previewMidWorkbook(){
   }catch(e){node.textContent="MID import failed: "+e.message;}
   finally{byId("mid-preview").disabled=false;}
 }
+
+async function refreshOfficialFeeds(){
+  const node=byId("feed-results"),button=byId("sync-official");
+  button.disabled=true;node.textContent="Fetching official published indexes on the local server...";
+  try{
+    const j=await req("/api/pricing/feeds/refresh",{method:"POST"});
+    clear(node);
+    node.append(el("strong","Official feed refresh: "+j.status+
+      " · "+j.saved+" new readings, "+j.unchanged+" unchanged, "+j.conflicts+" revisions to review"));
+    for(const [name,p] of Object.entries(j.providers)){
+      node.append(el("div",name+": "+p.status+
+        (p.observations?" ("+p.observations+" observations)":"")+
+        (p.hint?" · "+p.hint:"")+
+        (p.error?" · "+p.error:""),"record"));
+    }
+    for(const issue of j.errors.slice(0,5))node.append(el("p",issue));
+    await assessPressure();
+  }catch(e){node.textContent="Provider refresh failed: "+e.message;}
+  finally{button.disabled=false;}
+}
+function forecastInput(){
+  return {material_key:byId("price-key").value.trim(),
+    supplier:byId("price-supplier").value.trim(),
+    price_unit:byId("price-unit").value,quantity:byId("price-qty").value,
+    material_family:byId("market-family").value,
+    horizon_days:Number(byId("forecast-horizon").value),
+    spike_threshold_pct:byId("forecast-threshold").value};
+}
+async function freezePriceForecast(){
+  const node=byId("forecast-results"),button=byId("freeze-forecast");
+  button.disabled=true;
+  try{
+    const j=await req("/api/pricing/forecasts",{method:"POST",
+      headers:{"Content-Type":"application/json"},body:JSON.stringify(forecastInput())});
+    node.textContent=(j.new?"New":"Existing")+" source-frozen warning: "+
+      j.record.material_key+" · "+j.record.risk.toUpperCase()+
+      " · baseline $"+j.record.baseline_price+"/"+j.record.price_unit+
+      " (invoice "+j.record.baseline_source_ref+") · "+j.record.horizon_days+
+      " days · spike defined as "+j.record.spike_threshold_pct+
+      "% or more. "+j.message;
+  }catch(e){node.textContent="Could not freeze warning: "+e.message;}
+  finally{button.disabled=false;}
+}
+async function scoreForecasts(){
+  const node=byId("forecast-results");
+  try{
+    const j=await req("/api/pricing/forecasts");clear(node);
+    node.append(el("strong",j.evaluated+" comparable invoice outcomes · "+
+      j.pending+" pending · "+j.unobserved+" no matching future invoice"));
+    node.append(el("p","Correct "+j.correct+" / "+j.evaluated+
+      " · warning accuracy "+(j.accuracy===null?"N/A":j.accuracy+"%")+
+      " · always-no-spike baseline "+(j.always_no_spike_baseline_accuracy===null?"N/A":
+      j.always_no_spike_baseline_accuracy+"%")));
+    for(const x of j.samples.slice(0,12))
+      node.append(el("div",x.material_key+" · "+x.risk+" · "+
+        x.status+(x.change_pct===null?"":" · actual change "+x.change_pct+"%")+
+        (x.outcome_invoice?" · "+x.outcome_invoice.source_ref:""),"record"));
+    node.append(el("p",j.disclaimer));
+  }catch(e){node.textContent="Evaluation failed: "+e.message;}
+}
+async function journalForecastScorecard(){
+  const node=byId("forecast-results");
+  try{
+    const j=await req("/api/bean/forecast-outcomes",{method:"POST"});
+    node.append(el("p",j.journal.connected?"BEAN Core recorded scorecard event "+
+      j.journal.event_id+". This does not train or validate a model.":
+      "BEAN Core not connected: "+j.journal.reason));
+  }catch(e){node.append(el("p","Cannot journal scorecard: "+e.message));}
+}
+
 const today=new Date().toISOString().slice(0,10);
 byId("price-date").value=today;byId("market-date").value=today;
 byId("save-price").addEventListener("click",saveObservedPrice);
@@ -268,5 +338,9 @@ byId("save-signal").addEventListener("click",saveSignal);
 byId("assess-pressure").addEventListener("click",assessPressure);
 byId("market-bean").addEventListener("click",journalPressure);
 byId("mid-preview").addEventListener("click",previewMidWorkbook);
+byId("sync-official").addEventListener("click",refreshOfficialFeeds);
+byId("freeze-forecast").addEventListener("click",freezePriceForecast);
+byId("score-forecasts").addEventListener("click",scoreForecasts);
+byId("journal-scorecard").addEventListener("click",journalForecastScorecard);
 
 core();
