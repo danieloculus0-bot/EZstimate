@@ -65,3 +65,33 @@ The first versioned MID **XLSX read-only adapter** is now available at \`/api/pr
 A future approved adapter can retrieve public diesel and commodity producer-price series from documented, licensed sources (such as EIA and BLS/FRED), recording provider, series ID, publication date, unit, timestamp and cache freshness. Sources are not one-to-one predictors of fabrication stock costs. Sector news and sentiment need a documented scoring method plus attribution before they are promoted into a quantitative feature. Supplier lead times and local surcharges still require purchasing data.
 
 **GitHub Pages** serves the stand-alone, browser-side estimate demo. It has no local SQLite or BEAN Core process. The persistent Price Memory workbench runs in the **Python local build** only.
+
+## Official market data refresh and invoice feedback (October 2026)
+
+**Implemented in the local Python service, not in the static Pages demo.**
+
+- `ezstimate/market_feeds.py` reads official **BLS PPI steel mill products WPU1017**, **BLS PPI aluminum mill shapes WPU102501**, and **EIA weekly US No. 2 retail diesel EMD_EPD2D_PTE_NUS_DPG**. The BLS public GET does not need a registration key; EIA requires a free personal API key from https://www.eia.gov/opendata/register.php.
+- `ezstimate/auto_refresh.py` refreshes at server start and every **24 hours while the local server is running**, unless `EZSTIMATE_MARKET_AUTO_REFRESH=0`. The local page also has an explicit **Refresh EIA / BLS data** button. The service does *not* refresh if the computer/server is off, and no GitHub Pages scheduler can reach the private local database.
+- Both sources are recorded with observed date, value, official series ID and units in the local database. Duplicates do not create new records. If a provider revises an earlier period, the original observation is **not silently overwritten**; the refresh reports a revision conflict for review.
+- The BLS PPI is a **monthly index**, not dollars per sheet or per pound. EIA diesel is weekly **USD/gallon**, not a quote from a fuel supplier. No public index is treated as an actual supplier material price.
+- A missing `EIA_API_KEY` produces `not_configured`, not a fake diesel price or a blocked BLS refresh. A provider outage produces a visible partial/error state, retaining earlier data.
+
+### Start with automatic updates
+
+```powershell
+cd EZstimate
+$env:EIA_API_KEY = Read-Host "Enter your free EIA API key"
+py -m ezstimate.server
+```
+
+The key stays in your current PowerShell environment and is not returned to the browser in status responses. Without it, the local app still refreshes BLS steel and aluminum. Avoid committing keys to GitHub or saving them inside client-side JavaScript. Set `$env:EZSTIMATE_MARKET_AUTO_REFRESH="0"` to disable the periodic task if needed.
+
+### Frozen BEAN feedback scorecard
+
+- `POST /api/pricing/forecasts` freezes a **dated pressure hypothesis** based on the material family, source-linked invoice baseline, exact material code, supplier, original buying quantity/unit, horizon (7-365 days), and percentage spike threshold. The local UI has a **Freeze warning** button. The API does not accept a backdated prediction date.
+- `GET /api/pricing/forecasts` evaluates matured hypotheses against **later-entered, post-hypothesis invoices** with the same material key, supplier, price unit and quantity. The future invoice effective date must be inside the horizon. A forecast is **pending** until horizon end, or **unobserved** if no exact-matching outcome exists.
+- Descriptive accuracy is compared with a simple **always no-spike** baseline on the *same observed cases*, exposing sample counts, misses and incomplete evidence. Empty histories are not scored. This is *not* a statistically validated predictive advantage.
+- `POST /api/bean/forecast-outcomes` can optionally record those source-grounded scores to real installed BEAN Core. This currently creates evidence events, **not a trained model, autonomous decision, price escalation or backtested claim**.
+- No actual customer prices, API keys or supplier documents are included in CI. Offline tests use mocked provider payloads and synthetic invoices across Linux and Windows.
+
+The next research task is an adequately powered, holdout-tested policy that predicts subsequent invoice outcomes better than a simple baseline **without hindsight**. BEAN may propose rule changes; the source-linked results determine whether they actually improve.
