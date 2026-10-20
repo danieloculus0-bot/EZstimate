@@ -15,3 +15,8 @@ section{margin-bottom:37px;scroll-margin-top:95px}.section-top{display:flex;just
 #price-history .record,#market-results .record{margin:7px 0;padding:9px}
 #apply-price:disabled{opacity:.44}
 @media(max-width:680px){.price-form{grid-template-columns:1fr}}
+
+.mid-import{margin-top:16px;border-top:1px solid #44644a;padding-top:16px}
+.mid-import>strong{display:block;font-size:14px;color:var(--lime);margin-bottom:5px}
+.mid-import input[type=file]{display:block;margin:9px 0 12px;width:100%;max-width:100%}
+.mid-import .record{font-size:12px;word-break:break-word}
