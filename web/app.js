@@ -231,6 +231,32 @@ async function journalPressure(){
       " recorded. Market finding remains advisory.":"BEAN Core is not connected: "+j.journal.reason));
   }catch(e){node.append(el("p","Cannot journal to BEAN: "+e.message));}
 }
+async function previewMidWorkbook(){
+  const file=byId("mid-file").files[0],node=byId("mid-results");
+  if(!file){node.textContent="Choose an MID XLSX file first.";return;}
+  byId("mid-preview").disabled=true;node.textContent="Inspecting workbook locally...";
+  try{
+    const form=new FormData();form.append("file",file,file.name);
+    const j=await req("/api/pricing/mid-preview",{method:"POST",body:form});
+    clear(node);
+    node.append(el("strong",j.demand_event_count+" material events · "+
+      j.buyer_action_count+" buyer queue rows · "+j.buy_now_count+" buy-now actions"));
+    node.append(el("p","Sheets: "+j.recognized_formats.join(", ")+
+      (j.preview_truncated?" · only first 150 of each record type shown":"")));
+    for(const row of j.actions.slice(0,10)){
+      node.append(el("div",row.action+" · "+row.material_key+
+        (row.buy_qty?" · buy "+row.buy_qty:"")+
+        (row.order_by?" · order by "+row.order_by:"")+
+        " · "+row.source_sheet+" row "+row.source_row,"record"));
+    }
+    if(!j.actions.length)
+      for(const row of j.events.filter(x=>x.risk_flag).slice(0,10))
+        node.append(el("div",row.material_key+" · "+row.event_type+" · "+
+          row.risk_flag+" · "+row.source_sheet+" row "+row.source_row,"record"));
+    node.append(el("p","Read-only preview. No forecast quantities or unit prices have been added to your estimate."));
+  }catch(e){node.textContent="MID import failed: "+e.message;}
+  finally{byId("mid-preview").disabled=false;}
+}
 const today=new Date().toISOString().slice(0,10);
 byId("price-date").value=today;byId("market-date").value=today;
 byId("save-price").addEventListener("click",saveObservedPrice);
@@ -241,5 +267,6 @@ byId("apply-price").addEventListener("click",applyHistoryToLine);
 byId("save-signal").addEventListener("click",saveSignal);
 byId("assess-pressure").addEventListener("click",assessPressure);
 byId("market-bean").addEventListener("click",journalPressure);
+byId("mid-preview").addEventListener("click",previewMidWorkbook);
 
 core();
