@@ -1,5 +1,6 @@
 import test from "node:test";
 import {readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
 import assert from "node:assert/strict";
 import {analyzeText,parseCSV,reviewDocuments,seedLines,calculate,localAdvisory,synthetic} from "../web/engine.mjs";
 
@@ -47,6 +48,8 @@ test("canonical BEAN mascot is bundled and referenced in both interfaces",()=>{
   const art=readFileSync(new URL("../web/bean-official.webp",import.meta.url));
   assert.equal(art.toString("ascii",0,4),"RIFF");
   assert.equal(art.toString("ascii",8,12),"WEBP");
+  const sha=createHash("sha1").update(`blob ${art.length}\0`).update(art).digest("hex");
+  assert.equal(sha,"40387e82366a146e3904fb770d75cb9f19d816f3");
   for(const page of ["demo.html","index.html"]){
     const html=readFileSync(new URL("../web/"+page,import.meta.url),"utf8");
     assert.match(html,/bean-official\.webp/);
