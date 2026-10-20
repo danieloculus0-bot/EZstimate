@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=65"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ezstimate"
+version = "0.1.0"
+description = "Local-first manufacturing estimate workbench with evidence-aware review"
+requires-python = ">=3.11"
+dependencies = ["PyMuPDF>=1.23,<2", "openpyxl>=3.1,<4"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+include = ["ezstimate*"]
