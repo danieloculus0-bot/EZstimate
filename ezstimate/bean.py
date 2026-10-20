@@ -95,3 +95,48 @@ def journal_market_review(report):
     return {"connected": True, "bean_core_invoked": True, "event_id": event_id,
             "fingerprint": fingerprint, "authority": "observation_only",
             "model_inference": False}
+
+
+def journal_forecast_assessment(report):
+    """Record actual prospective-vs-invoice receipts into installed BEAN Core.
+
+    This is evidence persistence for later policy comparisons, not training.
+    """
+    path = os.environ.get("EZSTIMATE_BEAN_DB")
+    if not path:
+        return {"connected": False, "reason": "EZSTIMATE_BEAN_DB not configured"}
+    try:
+        from bean.integration import BeanReasoningLayer
+    except ImportError:
+        return {"connected": False, "reason": "Real BEAN Core not installed"}
+    evidence = {
+        "schema": "ezstimate.forecast_evaluation.v1",
+        "as_of": report["as_of"],
+        "snapshots": report["snapshots"],
+        "evaluated": report["evaluated"],
+        "outcomes_observed": report["outcomes_observed"],
+        "correct": report["correct"],
+        "accuracy": report["accuracy"],
+        "always_no_spike_baseline_accuracy": report["always_no_spike_baseline_accuracy"],
+        "samples": [{
+            "forecast_id": s["id"],
+            "issued_date": s["issued_date"],
+            "material_key": s["material_key"],
+            "risk": s["risk"],
+            "baseline_price": s["baseline_price"],
+            "baseline_source_ref": s["baseline_source_ref"],
+            "outcome_invoice": s["outcome_invoice"],
+            "change_pct": s["change_pct"],
+            "status": s["status"]
+        } for s in report["samples"][:25]],
+        "trained_model": False,
+        "demonstrated_advantage": False
+    }
+    fingerprint = hashlib.sha256(json.dumps(evidence,sort_keys=True).encode("utf-8")).hexdigest()
+    with BeanReasoningLayer(path) as core:
+        event_id = core.record_event("EZstimate actual invoice vs prior market warning",
+                                     subtype="ezstimate_price_validation",
+                                     data={"sha256":fingerprint, **evidence})
+    return {"connected":True,"bean_core_invoked":True,"event_id":event_id,
+            "fingerprint":fingerprint,"authority":"evidence_only",
+            "model_trained":False}
