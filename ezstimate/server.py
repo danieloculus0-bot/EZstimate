@@ -25,7 +25,7 @@ def index():
 
 @app.get("/<path:filename>")
 def assets(filename):
-    if filename not in ("app.js", "style.css", "bean-icon.svg"):
+    if filename not in ("app.js", "style.css", "bean-official.webp"):
         return jsonify({"error": "not found"}), 404
     return send_from_directory(ROOT / "web", filename)
 
