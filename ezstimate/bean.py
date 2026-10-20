@@ -61,3 +61,37 @@ def journal(documents, quote, assessment):
     return {"connected": True, "bean_core_invoked": True,
             "event_id": event_id, "fingerprint": fingerprint,
             "authority": "observation_only"}
+
+
+def journal_market_review(report):
+    """Persist a source-backed market-pressure observation in real BEAN Core, if installed.
+
+    No model inference is implied. Forecasting remains a hypothesis to validate
+    against later purchasing prices.
+    """
+    path = os.environ.get("EZSTIMATE_BEAN_DB")
+    if not path:
+        return {"connected": False, "reason": "EZSTIMATE_BEAN_DB not configured"}
+    try:
+        from bean.integration import BeanReasoningLayer
+    except ImportError:
+        return {"connected": False, "reason": "Real BEAN Core not installed"}
+    evidence = {
+        "schema": "ezstimate.market_pressure.v1",
+        "material_family": report["family"],
+        "as_of": report["as_of"],
+        "pressure_score": report["pressure_score"],
+        "risk": report["risk"],
+        "factors": report["factors"],
+        "supplier_price_forecast": None,
+        "forecast_accuracy_unverified": True,
+        "auto_pricing": False,
+    }
+    fingerprint = hashlib.sha256(json.dumps(evidence, sort_keys=True).encode("utf-8")).hexdigest()
+    with BeanReasoningLayer(path) as core:
+        event_id = core.record_event("EZstimate observed material market pressure",
+                                     subtype="ezstimate_material_market",
+                                     data={"sha256": fingerprint, **evidence})
+    return {"connected": True, "bean_core_invoked": True, "event_id": event_id,
+            "fingerprint": fingerprint, "authority": "observation_only",
+            "model_inference": False}
