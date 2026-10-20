@@ -19,7 +19,7 @@ EZstimate now remembers verified, dated material prices from supplier quotes, pu
 
 The new **Material Forecast** panel stores dated diesel, steel/aluminum indexes, supplier lead days and sourced sentiment readings and generates transparent **market-pressure watches**. It does not invent future material prices or silently raise a customer's quote. The optional **real BEAN Core** bridge can journal these market observations for later evidence-based outcome checking; model inference and forecast learning are not claimed yet.
 
-The old MID JobBOSS material-demand/shortage/need-date logic is mapped for a follow-on adapter. The first build accepts **manual market observations**; it does not yet fetch live EIA/BLS feeds or import the MID workbook automatically.
+The old MID JobBOSS material-demand/shortage/need-date data is now supported by a **read-only XLSX preview adapter** in the local workbench: select your MID workbook to examine demand events, risk flags, and buy-now actions. That preview does not automatically populate quote prices, persist forecast quantities, or write to ERP. Market readings are **manual** for now; there is no live EIA/BLS refresh yet.
 
 **These persistent functions run only in the [local Python build](#quickstart). GitHub Pages remains a static browser demo without a private price database.** Full [data contract and roadmap](docs/MATERIAL_INTELLIGENCE.md).
 
