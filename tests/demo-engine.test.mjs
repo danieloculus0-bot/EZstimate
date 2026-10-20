@@ -49,11 +49,11 @@ test("canonical BEAN mascot is bundled and referenced in both interfaces",()=>{
   assert.equal(art.toString("ascii",8,12),"WEBP");
   for(const page of ["demo.html","index.html"]){
     const html=readFileSync(new URL("../web/"+page,import.meta.url),"utf8");
-    assert.match(html,/bean-official\\.webp/);
-    assert.doesNotMatch(html,/bean-icon\\.svg/);
+    assert.match(html,/bean-official\.webp/);
+    assert.doesNotMatch(html,/bean-icon\.svg/);
   }
   const workflow=readFileSync(new URL("../.github/workflows/pages.yml",import.meta.url),"utf8");
-  assert.match(workflow,/web\\/bean-official\\.webp _site\\//);
+  assert.match(workflow,/web\/bean-official\.webp _site\//);
   const server=readFileSync(new URL("../ezstimate/server.py",import.meta.url),"utf8");
-  assert.match(server,/"bean-official\\.webp"/);
+  assert.match(server,/"bean-official\.webp"/);
 });
