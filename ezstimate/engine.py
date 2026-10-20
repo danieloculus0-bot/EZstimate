@@ -101,6 +101,73 @@ def bom_table(rows, source, page=None, sheet=None):
                        "needs_review": True})
     return result
 
+
+def spatial_titleblock(page, source, number):
+    """Read labels in the lower-right drawing title block, with proximity checks."""
+    r=page.rect
+    words=[(x0,(y0+y1)/2,s.strip()) for x0,y0,x1,y1,s,*_ in page.get_text("words")
+           if x0 >= r.x0+r.width*.55 and y0 >= r.y0+r.height*.67]
+    rules={
+        "part_number": ({"NO"},r"\d{4,12}",65,11),
+        "revision": ({"REV","REVISION"},r"[A-Z0-9]{1,4}",25,3),
+        "material": ({"MATL","MATRL","MATERIAL"},r"[A-Z][A-Z0-9._-]*\d[A-Z0-9._-]*",30,2),
+    }
+    result={}
+    for key,(labels,pattern,max_dx,max_dy) in rules.items():
+        choices=[]
+        for ax,ay,name in words:
+            if name.upper().rstrip(":") not in labels:
+                continue
+            for wx,wy,word in words:
+                dx,dy=wx-ax,abs(wy-ay)
+                if 1 < dx < max_dx and dy <= max_dy and re.fullmatch(pattern,word,re.I):
+                    choices.append((dx+dy*.8,word))
+        if choices:
+            result[key]=ev(min(choices)[1],source,number,"spatial title block")
+    return result
+
+
+def spatial_pdf_bom(page,source,number):
+    """Recover aligned BOMs without assuming OCR order implies row order."""
+    r=page.rect
+    words=[(x0,(y0+y1)/2,s.strip()) for x0,y0,x1,y1,s,*_ in page.get_text("words")]
+    heads={}
+    for key in ("ITEM","QTY","PART","DESCRIPTION","MATRL"):
+        matches=[(x,y) for x,y,s in words if s.upper()==key and
+                 y<r.height*.5 and x>r.width*.45]
+        if matches: heads[key]=min(matches,key=lambda z:z[1])
+    if len(heads)!=5 or max(y for x,y in heads.values())-min(y for x,y in heads.values())>3:
+        return []
+    base=heads["ITEM"][1]
+    candidates=sorted((x,y,s) for x,y,s in words if base+2<y<min(base+175,r.height*.48))
+    # Iterate in vertical order; part descriptions are assembled by x position.
+    candidates.sort(key=lambda z:z[1])
+    seen,entries=[],[]
+    for x,y,s in candidates:
+        if not (s.isdigit() and 1<=int(s)<=250 and abs(x-heads["ITEM"][0])<8):
+            continue
+        if any(abs(y-z)<2 for z in seen):
+            continue
+        same=sorted((w for w in candidates if abs(w[1]-y)<1.6),key=lambda z:z[0])
+        quantities=[text for xx,yy,text in same if
+                    abs(xx-heads["QTY"][0])<7 and text.isdigit() and 0<int(text)<=100000]
+        if not quantities:
+            continue
+        def col(start,end):
+            return " ".join(text for xx,yy,text in same if start<=xx<end)
+        part=col(heads["PART"][0]-6,heads["DESCRIPTION"][0]-19)
+        desc=col(heads["DESCRIPTION"][0]-19,heads["MATRL"][0]-5)
+        mat=col(heads["MATRL"][0]-5,heads["MATRL"][0]+27)
+        if not part and not desc:
+            continue
+        seen.append(y)
+        entries.append({"part_number":part,"quantity":int(quantities[0]),
+            "description":desc,"material":mat,"revision":"",
+            "item_number":int(s),"source":source,"page":number,
+            "sheet":None,"row":None,"region":"spatial PDF BOM",
+            "status":"proposed","needs_review":True})
+    return sorted(entries,key=lambda v:v["item_number"])
+
 def inspect_document(filename, content):
     name = Path(filename).name
     ext = Path(name).suffix.lower()
@@ -126,7 +193,7 @@ def inspect_document(filename, content):
         import fitz
     except ImportError as exc:
         raise RuntimeError("PyMuPDF must be installed") from exc
-    regions, text, bom = [], [], []
+    regions, text, bom, spatial_fields = [], [], [], {}
     with fitz.open(stream=content, filetype="pdf") as pdf:
         if pdf.is_encrypted or len(pdf) > 100:
             raise ValueError("Supply unlocked PDFs with 100 pages or fewer")
@@ -138,12 +205,17 @@ def inspect_document(filename, content):
             whole = page.get_text("text", sort=True)
             text.append(whole)
             regions.append({"text": whole, "page": n, "region": "full page"})
+            spatial_fields.update({k: v for k, v in spatial_titleblock(page,name,n).items()
+                                   if k not in spatial_fields})
+            page_bom=[]
             if hasattr(page, "find_tables"):
                 try:
                     for tab in page.find_tables().tables:
-                        bom += bom_table(tab.extract(), name, page=n)
+                        page_bom += bom_table(tab.extract(), name, page=n)
                 except (AttributeError, ValueError):
                     pass
+            geo_bom=spatial_pdf_bom(page,name,n)
+            bom.extend(geo_bom if len(geo_bom)>len(page_bom) else page_bom)
     joined = "\n".join(text)
     kind = "purchase_order" if re.search(r"\bPURCHASE\s+ORDER\b|\bP\.?O\.?\s*(?:NO|NUMBER|#)", joined, re.I) else "drawing"
     fields = {}
@@ -153,7 +225,11 @@ def inspect_document(filename, content):
         val = candidate(pat, regions, name)
         if val:
             fields[key] = val
-    mat = read_material(regions, name)
+    if kind == "drawing":
+        fields.update(spatial_fields)
+    mat = spatial_fields.get("material") if kind == "drawing" else None
+    if mat is None:
+        mat = read_material(regions,name)
     if mat:
         fields["material"] = mat
     hints = []

@@ -53,3 +53,17 @@ python -m unittest discover -s tests -v
 The independently packaged estimating engine now has a tested local handoff to Axiom Beta: the real ForgeVault release service supplies checksum-verified PDF bytes and a specific version/package; EZstimate extracts revision/material candidates and computes explicit-cost draft pricing; the Axiom importer independently recomputes the quoted total and retains the exact source version, digest and itemized quote evidence. Axiom's Quoting screen displays the linked drawing and revision identifiers. The BEAN observation is recorded using EZstimate's actual optional BEAN Core journal interface.
 
 [Cross-platform integration workflow](https://github.com/danieloculus0-bot/Axiom_Beta/actions/workflows/ezstimate-suite-wiring.yml) passed on Windows and Linux and [Axiom PR #16](https://github.com/danieloculus0-bot/Axiom_Beta/pull/16) merged. The Axiom importer is a local Python API, not an unauthenticated shop-network connector or an automatic quote approval. This implementation also shares the BEAN Gothic Lime design tokens (charcoal #0F1113 and lime #79DE4B) while keeping quote arithmetic separate from BEAN reasoning.
+
+## Real-print-informed validation, customer documents kept private
+
+Three existing user-supplied customer drawings were used only for **private**
+diagnostics: a dimensioned plate, a welded skid with a multi-row BOM, and a
+formed/welded enclosure. The public regression suite contains entirely
+fictional part numbers/material keys and synthetic PDF geometry, **not**
+customer drawing files, identifiers, instructions or geometry.
+
+Title-block numbers, revisions and material identifiers are now proposed
+using labeled **spatial proximity**; column-aligned BOM rows can be proposed
+when text-order and PDF table extraction fail. These are *review-required
+candidates*, never approvals or automatically verified material grades.
+Actual costs and shop processing times must still come from approved sources.
