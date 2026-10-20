@@ -4,9 +4,11 @@ import os
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 from .engine import inspect_document, price_quote, review_package
-from .bean import local_review, core_status, journal, journal_market_review
+from .bean import local_review, core_status, journal, journal_market_review, journal_forecast_assessment
 from .pricing import remember_price, price_history, record_market_signal, market_pressure, database_path
 from .mid_adapter import preview_mid
+from .market_feeds import refresh_official_feeds, SOURCES, DIESEL_SERIES
+from .forecast import freeze_forecast, evaluate_forecasts
 
 ROOT = Path(__file__).resolve().parent.parent
 app = Flask(__name__, static_folder=None)
@@ -91,7 +93,8 @@ def mid_workbook_preview():
 @app.get("/api/pricing/status")
 def pricing_status():
     return jsonify({"backend": "local_sqlite", "database": str(database_path()),
-                    "price_memory": "persistent", "market_feed": "manual_import_only",
+                    "price_memory": "persistent", "market_feed": "BLS_public_api_and_optional_EIA",
+                    "eia_key_configured": bool(os.environ.get("EIA_API_KEY")),
                     "quote_autofill": False, "market_quote_escalation": False})
 
 @app.post("/api/pricing/prices")
@@ -140,6 +143,47 @@ def bean_market_observation():
         report = market_pressure(body.get("family", "steel"))
         result = journal_market_review(report)
         return jsonify({"assessment": report, "journal": result})
+    except (ValueError, TypeError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except (ImportError, RuntimeError, OSError) as exc:
+        return jsonify({"error": "BEAN Core journal unavailable", "reason": type(exc).__name__}), 503
+
+
+@app.get("/api/pricing/feeds/status")
+def official_feed_status():
+    return jsonify({"bls_series": {k: v[0] for k,v in SOURCES.items()},
+                    "eia_diesel_series": DIESEL_SERIES,
+                    "eia_key_configured": bool(os.environ.get("EIA_API_KEY")),
+                    "public_data_only": True, "auto_quote_change": False,
+                    "refresh": "explicit_local_only"})
+
+@app.post("/api/pricing/feeds/refresh")
+def refresh_feed():
+    # This local-only action reaches fixed official provider URLs; it does not
+    # accept caller-supplied arbitrary HTTP destinations or API credentials.
+    return jsonify(refresh_official_feeds())
+
+@app.post("/api/pricing/forecasts")
+def issue_market_forecast():
+    try:
+        body = request.get_json(silent=True)
+        result = freeze_forecast(body)
+        return jsonify(result), 201 if result["new"] else 200
+    except (ValueError, TypeError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+@app.get("/api/pricing/forecasts")
+def forecast_scorecard():
+    try:
+        return jsonify(evaluate_forecasts())
+    except (ValueError, TypeError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+@app.post("/api/bean/forecast-outcomes")
+def journal_forecast_outcomes():
+    try:
+        report = evaluate_forecasts()
+        return jsonify({"scorecard": report, "journal": journal_forecast_assessment(report)})
     except (ValueError, TypeError) as exc:
         return jsonify({"error": str(exc)}), 400
     except (ImportError, RuntimeError, OSError) as exc:
