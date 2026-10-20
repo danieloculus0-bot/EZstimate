@@ -114,7 +114,7 @@ def _as_of(raw):
 
 
 def _now():
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(timezone.utc).isoformat(timespec="microseconds")
 
 
 def remember_price(item, path=None):
