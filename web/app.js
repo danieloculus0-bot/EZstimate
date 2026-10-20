@@ -244,10 +244,24 @@ async function previewMidWorkbook(){
     node.append(el("p","Sheets: "+j.recognized_formats.join(", ")+
       (j.preview_truncated?" · only first 150 of each record type shown":"")));
     for(const row of j.actions.slice(0,10)){
-      node.append(el("div",row.action+" · "+row.material_key+
+      const card=el("div",null,"record");
+      card.append(el("div",row.action+" · "+row.material_key+
         (row.buy_qty?" · buy "+row.buy_qty:"")+
         (row.order_by?" · order by "+row.order_by:"")+
-        " · "+row.source_sheet+" row "+row.source_row,"record"));
+        " · "+row.source_sheet+" row "+row.source_row));
+      const use=el("button","Prepare purchase request","secondary");
+      use.addEventListener("click",()=>{
+        byId("pr-material").value=row.material_key;
+        byId("pr-quantity").value=Number(row.buy_qty)>0?row.buy_qty:"";
+        byId("pr-job").value=row.job||"";
+        byId("pr-supplier").value=row.supplier||"";
+        byId("pr-need-date").value=/^\\d{4}-\\d{2}-\\d{2}$/.test(row.job_due)?row.job_due:"";
+        byId("pr-source-ref").value=j.source_file+" / "+row.source_sheet+" / row "+row.source_row;
+        byId("pr-justification").value=row.action+"; "+(row.notes||"Material forecast action");
+        byId("pr-draft-result").textContent="MID evidence copied. Confirm purchasing unit and quantity before creating a draft. Nothing was sent.";
+        document.getElementById("procurement").scrollIntoView({behavior:"smooth"});
+      });
+      card.append(use);node.append(card);
     }
     if(!j.actions.length)
       for(const row of j.events.filter(x=>x.risk_flag).slice(0,10))
