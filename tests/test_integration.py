@@ -38,7 +38,7 @@ class IntegrationTests(unittest.TestCase):
 
     def test_flask_local_workbench(self):
         with app.test_client() as client:
-            for endpoint in ("/", "/app.js", "/style.css", "/bean-icon.svg", "/api/status"):
+            for endpoint in ("/", "/app.js", "/style.css", "/bean-official.webp", "/api/status"):
                 self.assertEqual(client.get(endpoint).status_code, 200, endpoint)
             result = client.post("/api/intake", data={"files": (io.BytesIO(
                 b"Part Number,Qty,Material\nX-20,2,A36\n"), "bom.csv")})
