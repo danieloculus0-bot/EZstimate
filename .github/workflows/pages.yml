@@ -43,7 +43,7 @@ jobs:
         run: |
           mkdir -p _site
           cp web/demo.html _site/index.html
-          cp web/demo.css web/style.css web/demo.mjs web/engine.mjs web/bean-icon.svg _site/
+          cp web/demo.css web/style.css web/demo.mjs web/engine.mjs web/bean-official.webp _site/
           touch _site/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
