@@ -24,6 +24,7 @@ jobs:
       - name: Verify browser engine and source tests
         run: |
           node --check web/demo.mjs
+          node --check web/app.js
           node --test tests/demo-engine.test.mjs
   deploy:
     name: Publish public demo
