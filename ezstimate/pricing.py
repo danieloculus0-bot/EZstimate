@@ -230,7 +230,9 @@ def market_pressure(family="steel", as_of=None, path=None):
         current = history[0]
         previous = history[1] if len(history)>1 else None
         change_pct = None
-        if previous and Decimal(previous["value"]) != 0:
+        gap_days = ((date.fromisoformat(current["effective_date"]) -
+                     date.fromisoformat(previous["effective_date"])).days) if previous else None
+        if previous and 0 < gap_days <= 90 and Decimal(previous["value"]) != 0:
             change_pct = (Decimal(current["value"])/Decimal(previous["value"])-1)*100
         points = 0
         if change_pct is not None:
@@ -240,7 +242,7 @@ def market_pressure(family="steel", as_of=None, path=None):
                 points = 2 if change_pct >= 10 else 1 if change_pct >= 5 else 0
             elif s == "supplier_lead_days":
                 points = 2 if change_pct >= 40 else 1 if change_pct >= 20 else 0
-        elif s == "sentiment_score" and Decimal(current["value"]) >= 70:
+        if s == "sentiment_score" and Decimal(current["value"]) >= 70:
             points = 1
         # Stale signals are visible but do not score as current pressure.
         age = (date.fromisoformat(day)-date.fromisoformat(current["effective_date"])).days
@@ -252,8 +254,9 @@ def market_pressure(family="steel", as_of=None, path=None):
         factors.append({"series": s, "status": "stale" if age>90 else "observed",
                         "latest": current, "previous": previous,
                         "change_pct": str(change_pct.quantize(Decimal("0.1"))) if change_pct is not None else None,
-                        "age_days": age, "pressure_points": points})
-    comparable = sum(1 for x in factors if x.get("status")=="observed" and x.get("previous"))
+                        "age_days": age, "comparison_gap_days": gap_days,
+                        "pressure_points": points})
+    comparable = sum(1 for x in factors if x.get("status")=="observed" and x.get("change_pct") is not None)
     label = "insufficient" if comparable==0 else "high" if score>=4 else "elevated" if score>=2 else "monitor"
     return {"family": family, "as_of": day, "pressure_score": score, "risk": label,
             "spike_watch": label=="high", "factors": factors, "reasons": reasons,
