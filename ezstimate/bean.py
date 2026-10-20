@@ -1,0 +1,63 @@
+"""Optional bridge into REAL BEAN Core persistence.
+
+Fallback recommendations are plain EZstimate rules and must never be described
+as autonomous BEAN inference. The host remains authoritative for quote release.
+"""
+from __future__ import annotations
+import hashlib
+import importlib.util
+import json
+import os
+
+def local_review(documents, quote):
+    findings = []
+    keys = {key for d in documents for key in d.get("fields", {})}
+    if "material" not in keys:
+        findings.append("Confirm material, grade, thickness, stock form and actual purchasing cost.")
+    if "revision" not in keys:
+        findings.append("Confirm the controlled drawing revision before pricing.")
+    if quote.get("status") != "draft_review":
+        findings.append("Unpriced or invalid quote lines block the estimate total.")
+    if not any(d.get("kind") == "purchase_order" for d in documents):
+        findings.append("No PO found; confirm requested quantity, revision, ship date and commercial terms.")
+    if any(not d.get("bom") for d in documents if d.get("kind") == "drawing"):
+        findings.append("One or more drawings have no detected BOM table. Cross-check assembly components.")
+    if not findings:
+        findings.append("Basic document/quote completeness checks passed. Validate routing and supplier costs before release.")
+    return {"engine": "EZstimate deterministic local checks", "bean_core_invoked": False,
+            "findings": findings, "authority": "advisory_only"}
+
+def core_status():
+    configured = bool(os.environ.get("EZSTIMATE_BEAN_DB"))
+    try:
+        installed = bool(importlib.util.find_spec("bean"))
+    except (ImportError, ModuleNotFoundError):
+        installed = False
+    return {"configured": configured, "core_importable": installed,
+            "mode": "opt_in" if configured else "disabled"}
+
+def journal(documents, quote, assessment):
+    path = os.environ.get("EZSTIMATE_BEAN_DB")
+    if not path:
+        return {"connected": False, "reason": "EZSTIMATE_BEAN_DB not configured"}
+    try:
+        from bean.integration import BeanReasoningLayer
+    except ImportError:
+        return {"connected": False, "reason": "Real BEAN Core not installed"}
+    evidence = [
+        {"source": d.get("filename"), "kind": d.get("kind"), "bom_count": len(d.get("bom", [])),
+         "fields": {k: {"value": v["value"], "page": v.get("page"),
+                        "region": v.get("region")} for k, v in d.get("fields", {}).items()}}
+        for d in documents
+    ]
+    observation = {"schema": "ezstimate.source_observation.v1",
+                   "evidence": evidence, "quote_status": quote.get("status"),
+                   "quote_total": quote.get("total"), "findings": assessment.get("findings", []),
+                   "human_approved": False}
+    fingerprint = hashlib.sha256(json.dumps(observation, sort_keys=True).encode("utf-8")).hexdigest()
+    with BeanReasoningLayer(path) as core:
+        event_id = core.record_event("EZstimate draft quote source review",
+                                     subtype="ezstimate", data={"sha256": fingerprint, **observation})
+    return {"connected": True, "bean_core_invoked": True,
+            "event_id": event_id, "fingerprint": fingerprint,
+            "authority": "observation_only"}
