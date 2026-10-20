@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080d0c">
+<meta name="description" content="EZstimate interactive manufacturing quoting demo: extract drawing fields, import BOMs, compare POs and cost a quote.">
+<title>EZstimate | Live Estimating Demo</title>
+<link rel="stylesheet" href="./style.css"><link rel="stylesheet" href="./demo.css">
+<script type="module" src="./demo.mjs"></script>
+</head>
+<body><a class="skip" href="#main">Skip to workbench</a>
+<div class="shell">
+<aside class="rail">
+<div class="brand"><div class="brand-mark">EZ</div><div>ENGINEERING<br><b>SUITE</b></div></div>
+<div class="rail-label">WORKFLOW</div>
+<nav><a href="#import">01&nbsp; Import</a><a href="#review">02&nbsp; Review</a><a href="#cost">03&nbsp; Cost</a><a href="#bean">04&nbsp; BEAN</a></nav>
+<div class="rail-foot"><span class="dot"></span>LOCAL BROWSER LAB<br>Experimental alpha</div>
+</aside>
+<main id="main"><header class="top"><b>EZstimate</b> / Manufacturing estimating <span id="connection">BROWSER DEMO · LOCAL CHECKS</span></header>
+<div class="content">
+<section class="hero">
+<div class="eyebrow">TRACEABLE QUOTING · BEAN GOTH GREEN</div>
+<h1>Know what you're <em>quoting.</em></h1>
+<p>Turn drawings, BOMs and purchase orders into a defensible draft. Detect material and revision conflicts, then cost every operation using numbers you control.</p>
+<div class="chips"><span>LIVE BROWSER ENGINE</span><span>PDF TEXT EXTRACTION</span><span>PO CROSS-CHECK</span><span>EXPLICIT COSTS</span></div>
+<div class="hero-actions"><button id="sample" class="primary">Load sample RFQ</button><button id="clear" class="secondary">Clear workspace</button></div>
+<div class="metrics"><span><strong id="documentsCount">0</strong> SOURCE FILES</span><span><strong id="partsCount">0</strong> ESTIMATE LINES</span><span><strong id="flagsCount">0</strong> REVIEW FLAGS</span></div>
+<p class="demo-disclosure"><b>Functional public alpha:</b> Runs locally in this tab. A PDF.js dependency is fetched when a PDF is opened. OCR, supplier costs, live ERP and BEAN Core runtime are not connected to GitHub Pages.</p>
+</section>
+<section id="import">
+<div class="section-top"><div><div class="eyebrow">01 / INGEST</div><h2>Import documents</h2></div><span class="tag">YOUR FILES, YOUR BROWSER</span></div>
+<div class="panel upload"><div><strong>Drawings, customer purchase orders and BOMs</strong><small>Selectable-text PDF, CSV BOM, or TXT source notes. Max 15 MB per file.</small></div>
+<input id="files" type="file" accept=".pdf,.csv,.txt" multiple><button id="scan" class="primary">Analyze selected</button></div>
+<div class="panel paste-panel"><div><strong>Or paste drawing / PO text</strong><small>Useful for checking an email, drawing note or extracted text.</small></div>
+<div class="paste-inputs"><select id="pasteType"><option value="drawing">Drawing</option><option value="po">Purchase order</option></select>
+<textarea id="pasteText" rows="3" placeholder="PART NO: BR-100&#10;REV: A&#10;MATERIAL: ASTM A36"></textarea><button id="paste" class="secondary">Analyze text</button></div></div>
+<p id="message" class="notice" role="status" aria-live="polite">Load the sample RFQ to explore the full workflow.</p>
+</section>
+<section id="review"><div class="section-top"><div><div class="eyebrow">02 / VERIFY</div><h2>Review extracted evidence</h2></div><span class="tag">HUMAN VERIFICATION</span></div>
+<div class="two"><div class="panel"><h3>Document candidates and BOM</h3><div id="documents" class="stack">No source documents loaded.</div></div>
+<div class="panel"><h3>Conflicts and incomplete sources</h3><div id="exceptions" class="stack">Import files to see review findings.</div></div></div>
+</section>
+<section id="cost"><div class="section-top"><div><div class="eyebrow">03 / CALCULATE</div><h2>Manufacturing cost and sell price</h2></div><span class="tag">REAL ARITHMETIC</span></div>
+<div class="panel"><p class="hint">Fill in cost assumptions. Empty values block the draft total. Material includes scrap, labor uses an hourly rate, setup is spread over the lot, and selling price uses gross margin, not markup.</p>
+<div class="scroll"><table><thead><tr><th>Part / source</th><th>Qty</th><th>Material $/ea</th><th>Labor hr/ea</th><th>Shop $/hr</th><th>Outside $/ea</th><th>Setup $/lot</th><th>Scrap %</th><th>Margin %</th><th>Lot sell</th></tr></thead><tbody id="lines"><tr><td colspan="10">No line items.</td></tr></tbody></table></div>
+<div class="actions"><button id="addline" class="secondary">+ Add estimate line</button><button id="calculate" class="primary">Calculate draft</button></div></div>
+<div class="panel total-box"><div><span class="eyebrow">DRAFT ESTIMATE · USD</span><p id="quote-status">Cost assumptions required</p></div><strong id="total">N/A</strong></div>
+<div id="quote-details" class="stack"></div>
+<div class="actions"><button id="export" class="secondary" disabled>Export draft JSON</button><small>Freight and taxes remain unpriced. Human approval required.</small></div>
+</section>
+<section id="bean"><div class="section-top"><div><div class="eyebrow">04 / REVIEW</div><h2>BEAN evidence advisor</h2></div><span class="tag">LOCAL CHECKS, NOT CORE</span></div>
+<div class="bean-panel"><img class="mascot" src="./bean-icon.svg" alt="BEAN mascot"><div><h3>BEAN <small>Estimating review</small></h3>
+<p>Local deterministic checks point out source ambiguity and process questions. The full BEAN Core journal is a separate optional integration in the Python application.</p>
+<button id="beanReview" class="primary">Review assumptions</button><div id="bean-findings" class="findings">Load documents to review an estimate.</div>
+</div></div></section>
+<section class="suite-links"><div class="eyebrow">PART OF THE ENGINEERING SUITE</div><a href="https://github.com/danieloculus0-bot/BEAN">BEAN Core</a> · <a href="https://github.com/danieloculus0-bot/ForgeVault">ForgeVault</a> · <a href="https://github.com/danieloculus0-bot/EZ-FEA">EZ-FEA</a></section>
+</div><footer>EZstimate browser alpha · Source-backed estimates · Not approved for release</footer></main></div>
+</body></html>
