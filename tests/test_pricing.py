@@ -38,6 +38,19 @@ class PricingTests(unittest.TestCase):
             **changes,
         }
 
+    def test_each_operation_releases_local_db_file(self):
+        # Immediate unlink is intentionally checked on Windows, where unlike
+        # Unix an open sqlite handle causes WinError 32.
+        from ezstimate.pricing import _connect
+        remember_price(self.price())
+        price_history("SHT-STL-0250X60X120-A36-HR", "sheet",
+                      as_of="2026-02-20")
+        with _connect(self.path) as connection:
+            mode = connection.execute("PRAGMA journal_mode").fetchone()[0]
+            self.assertEqual(mode.lower(), "delete")
+        self.path.unlink()
+        self.assertFalse(self.path.exists())
+
     def test_history_survives_database_reopen(self):
         saved = remember_price(self.price())
         self.assertTrue(saved["new"])

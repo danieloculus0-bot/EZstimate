@@ -34,9 +34,18 @@ def _connect(path=None):
     target.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(str(target), timeout=10)
     connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA busy_timeout=10000")
-    connection.execute("PRAGMA journal_mode=WAL")
-    connection.executescript("""
+    try:
+        # A small, local pricebook favors deterministic cross-platform file
+        # lifetime over WAL's multiple-reader concurrency. Windows cannot
+        # unlink databases while a WAL handle is still open, unlike Unix.
+        # Consume and close pragma cursors explicitly (PRAGMAs return rows).
+        for statement in ("PRAGMA busy_timeout=10000", "PRAGMA journal_mode=DELETE"):
+            cursor = connection.execute(statement)
+            try:
+                cursor.fetchall()
+            finally:
+                cursor.close()
+        connection.executescript("""
         CREATE TABLE IF NOT EXISTS purchase_prices (
           id INTEGER PRIMARY KEY,
           material_key TEXT NOT NULL,
@@ -67,7 +76,6 @@ def _connect(path=None):
         );
         CREATE INDEX IF NOT EXISTS signal_lookup ON market_signals(series, effective_date DESC);
     """)
-    try:
         yield connection
         connection.commit()
     except Exception:
