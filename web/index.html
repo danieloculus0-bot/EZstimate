@@ -5,7 +5,7 @@
 <body><a href="#main" class="skip">Skip to workbench</a><div class="shell">
 <aside class="rail"><div class="brand"><div class="brand-mark">EZ</div><div>ENGINEERING<br><b>SUITE</b></div></div>
 <div class="rail-label">WORKFLOW</div>
-<nav><a href="#import">01&nbsp; Import</a><a href="#review">02&nbsp; Review</a><a href="#cost">03&nbsp; Cost</a><a href="#bean">04&nbsp; BEAN</a></nav>
+<nav><a href="#import">01&nbsp; Import</a><a href="#review">02&nbsp; Review</a><a href="#cost">03&nbsp; Cost</a><a href="#pricing">04&nbsp; Price Memory</a><a href="#bean">05&nbsp; BEAN</a></nav>
 <div class="rail-foot"><span class="dot"></span>LOCAL FIRST<br>Experimental alpha</div></aside>
 <main id="main"><header class="top"><b>EZstimate</b> / Manufacturing estimating <span id="connection">BEAN status checking</span></header>
 <div class="content">
@@ -25,7 +25,43 @@
 <div class="actions"><button id="addline" class="secondary">+ Add line</button><button id="calculate" class="primary">Calculate draft</button></div></div>
 <div class="panel total-box"><div><span class="eyebrow">DRAFT ESTIMATE · USD</span><p id="quote-status">Cost inputs required</p></div><strong id="total">N/A</strong></div>
 <div id="quote-details" class="stack"></div><div class="actions"><button id="export" class="secondary" disabled>Export draft JSON</button><small>Taxes and freight unknown. Draft is never an approved quote.</small></div></section>
-<section id="bean"><div class="section-top"><div><div class="eyebrow">04 / REASON</div><h2>BEAN review</h2></div><span class="tag">ADVISORY ONLY</span></div>
+<section id="pricing"><div class="section-top"><div><div class="eyebrow">04 / INTELLIGENCE</div><h2>Price memory &amp; material market watch</h2></div><span class="tag">LOCAL SQLITE · SOURCE-REFERENCED</span></div>
+<div class="two">
+<div class="panel">
+<h3>Remember an actual material price</h3>
+<p class="hint">Use an exact ERP material code or complete specification. Prices from supplier quotes, POs and invoices are retained with their source. No quote cost is filled automatically.</p>
+<div class="price-form">
+<label>Material code / spec<input id="price-key" placeholder="SHT-STL-0250X60X120-A36-HR"></label>
+<label>Unit<select id="price-unit"><option value="sheet">Per sheet</option><option value="lb">Per lb</option><option value="ft">Per ft</option><option value="ea">Per each</option><option value="kg">Per kg</option><option value="m">Per meter</option></select></label>
+<label>Supplier<input id="price-supplier" placeholder="Supplier name"></label>
+<label>Source<select id="price-source-type"><option value="supplier_quote">Supplier quote</option><option value="purchase_order">Purchase order</option><option value="invoice">Invoice</option><option value="verified_manual">Verified manual entry</option></select></label>
+<label>Document / PO reference<input id="price-source-ref" placeholder="Quote or invoice number"></label>
+<label>Effective date<input id="price-date" type="date"></label>
+<label>Source quantity<input id="price-qty" type="number" min="0.00001" step="any" value="1"></label>
+<label>USD / unit<input id="price-value" type="number" min="0.00001" step="any" placeholder="0.00"></label>
+</div>
+<div class="actions"><button class="primary" id="save-price">Remember verified price</button><button class="secondary" id="find-price">View history</button></div>
+<div id="price-history" class="findings" role="status">No price history loaded. Enter a material code and unit.</div>
+<label class="price-apply">Target quote line<select id="price-line"><option value="">Select a quote line</option></select></label>
+<button id="apply-price" class="secondary" disabled>Use selected price as material $/ea</button>
+<p class="hint">Only exact per-each historical prices can populate a quote line. Sheet, weight or length pricing needs a measured per-part conversion first.</p>
+</div>
+<div class="panel">
+<h3>Material Forecast · market pressure</h3>
+<p class="hint">Track dated diesel, steel/aluminum index, supplier lead time and sentiment readings. Pressure flags are evidence, not predicted supplier prices.</p>
+<div class="price-form">
+<label>Material family<select id="market-family"><option value="steel">Steel</option><option value="aluminum">Aluminum</option><option value="other">Other</option></select></label>
+<label>Indicator<select id="market-series"><option value="diesel_usd_per_gallon">Diesel (USD/gal)</option><option value="steel_market_index">Steel market index</option><option value="aluminum_market_index">Aluminum market index</option><option value="supplier_lead_days">Supplier lead time (days)</option><option value="sentiment_score">Sentiment (0-100)</option></select></label>
+<label>Reading<input id="market-value" type="number" min="0" step="any" placeholder="Observed value"></label>
+<label>As-of date<input id="market-date" type="date"></label>
+<label>Evidence source<input id="market-source" placeholder="Series, publication or supplier"></label>
+</div>
+<div class="actions"><button id="save-signal" class="secondary">Record reading</button><button id="assess-pressure" class="primary">Assess market pressure</button></div>
+<div id="market-results" class="findings" role="status">No assessment yet. Import at least two dated observations for trend analysis.</div>
+<div class="actions"><button id="market-bean" class="secondary">Journal pressure evidence to BEAN</button></div>
+<p class="hint">Initial build: manual observations, not a live commodity or diesel data feed. No automatic quote markup.</p>
+</div></div></section>
+<section id="bean"><div class="section-top"><div><div class="eyebrow">05 / REASON</div><h2>BEAN review</h2></div><span class="tag">ADVISORY ONLY</span></div>
 <div class="bean-panel"><img class="mascot" src="/bean-official.webp" alt="Official glossy lime-green BEAN mascot waving with two sprout leaves">
 <div><h3>BEAN <small id="bean-mode">Local checks only</small></h3><p>Identify unresolved estimating questions. When actual BEAN Core is installed, you can explicitly journal reviewed source evidence into its persistent memory.</p>
 <div class="actions"><button id="review-bean" class="primary">Review draft</button><button id="journal-bean" class="secondary" disabled>Journal to BEAN Core</button></div>
