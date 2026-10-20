@@ -26,3 +26,7 @@ Near black `#080d0c`, charcoal-green `#17211c`, acid lime `#c5ff4a`, mint `#5ff3
 - Implement versioned cost books, accepted-source field overrides, full PO-line reconciliation, ForgeVault/Axiom adapters, and a real BEAN proposal/evidence loop with independently verified outcomes before production claims.
 
 Public tests use synthetic values and artifacts. Keep company drawings, customer POs and actual shop rates outside this repository.
+
+## Tested Axiom import
+
+Axiom's local module at superforge/integrations/ezstimate_quote.py imports an explicit EZstimate draft quote proposal. The caller must supply the exact released ForgeVault file bytes and manifest; Axiom checks SHA-256 and independently recalculates numeric costs. It persists the source record, exact version UUID, release-package number and proposal digest. Conflicting use of a quote number is refused and successful re-import is idempotent. Only review_required quotes can enter this path; no public HTTP write endpoint or purchase order is created. CI independently checks the real ForgeVault/EZstimate/Axiom/BEAN handoff on both Windows and Linux. The release state originates at ForgeVault and is not cryptographically authenticated by merely possessing its JSON manifest.

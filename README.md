@@ -37,3 +37,9 @@ python -m unittest discover -s tests -v
 - Local BEAN Core journal connection if the real module is available (not a pretend generative assistant)
 
 **Not yet:** OCR, fully automatic table recognition for arbitrary drawing formats, validated manufacturer pricing, connected historical ERP costs, PO acceptance, vendor purchasing, CAD mass estimation, or released quote authorization. All extracted fields need human review, especially tolerances and processes. Public fixtures and tests are synthetic; never commit customer drawings, prices, or POs.
+
+## Verified engineering-suite wiring (2026-10-20)
+
+The independently packaged estimating engine now has a tested local handoff to Axiom Beta: the real ForgeVault release service supplies checksum-verified PDF bytes and a specific version/package; EZstimate extracts revision/material candidates and computes explicit-cost draft pricing; the Axiom importer independently recomputes the quoted total and retains the exact source version, digest and itemized quote evidence. Axiom's Quoting screen displays the linked drawing and revision identifiers. The BEAN observation is recorded using EZstimate's actual optional BEAN Core journal interface.
+
+[Cross-platform integration workflow](https://github.com/danieloculus0-bot/Axiom_Beta/actions/workflows/ezstimate-suite-wiring.yml) passed on Windows and Linux and [Axiom PR #16](https://github.com/danieloculus0-bot/Axiom_Beta/pull/16) merged. The Axiom importer is a local Python API, not an unauthenticated shop-network connector or an automatic quote approval. This implementation also shares the BEAN Gothic Lime design tokens (charcoal #0F1113 and lime #79DE4B) while keeping quote arithmetic separate from BEAN reasoning.
