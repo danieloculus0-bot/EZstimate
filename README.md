@@ -1,5 +1,12 @@
 # EZstimate
 
+### [OPEN THE INTERACTIVE EZSTIMATE DEMO](https://danieloculus0-bot.github.io/EZstimate/)
+
+[Demo deployment and tests](https://github.com/danieloculus0-bot/EZstimate/actions/workflows/pages.yml) · [Demo source](web/demo.html) · [Full repository](https://github.com/danieloculus0-bot/EZstimate)
+
+**Browser demo:** Load a synthetic RFQ, upload selectable-text PDF drawings and POs, import a CSV BOM, identify material and revision conflicts, enter manufacturing costs, calculate a draft quote, and view BEAN-style local review findings. The browser demo is separate from the Python application and does **not** invoke a live BEAN Core or ERP connector. The deployment workflow must pass for GitHub Pages to serve the site.
+
+
 **Manufacturing estimating workbench · engineering suite · experimental alpha**
 
 EZstimate is a local-first manufacturing quote tool. It accepts customer drawings, BOMs, and purchase-order PDFs, proposes traceable fields for human review, calculates quotes from explicitly provided costs, and can journal reviewed observations into **real BEAN Core** when that installation is available. It does not invent material prices, process times, or approval decisions.
