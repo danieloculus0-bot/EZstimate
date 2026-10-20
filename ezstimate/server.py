@@ -4,7 +4,8 @@ import os
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 from .engine import inspect_document, price_quote, review_package
-from .bean import local_review, core_status, journal
+from .bean import local_review, core_status, journal, journal_market_review
+from .pricing import remember_price, price_history, record_market_signal, market_pressure, database_path
 
 ROOT = Path(__file__).resolve().parent.parent
 app = Flask(__name__, static_folder=None)
@@ -74,6 +75,64 @@ def bean_review():
             return jsonify({"error": "BEAN persistence not confirmed",
                             "detail": type(exc).__name__}), 503
     return jsonify(result)
+
+
+@app.get("/api/pricing/status")
+def pricing_status():
+    return jsonify({"backend": "local_sqlite", "database": str(database_path()),
+                    "price_memory": "persistent", "market_feed": "manual_import_only",
+                    "quote_autofill": False, "market_quote_escalation": False})
+
+@app.post("/api/pricing/prices")
+def remember_purchase_price():
+    try:
+        data = request.get_json(silent=True)
+        result = remember_price(data)
+        return jsonify(result), 201 if result["new"] else 200
+    except (ValueError, TypeError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+@app.get("/api/pricing/prices")
+def historical_prices():
+    try:
+        return jsonify(price_history(request.args.get("material_key", ""),
+                                    request.args.get("price_unit", ""),
+                                    supplier=request.args.get("supplier") or None,
+                                    as_of=request.args.get("as_of") or None))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+@app.post("/api/pricing/signals")
+def new_market_signal():
+    try:
+        data = request.get_json(silent=True)
+        result = record_market_signal(data)
+        return jsonify(result), 201 if result["new"] else 200
+    except (ValueError, TypeError) as exc:
+        return jsonify({"error": str(exc)}), 400
+
+@app.get("/api/pricing/pressure")
+def market_pressure_report():
+    try:
+        return jsonify(market_pressure(request.args.get("family", "steel"),
+                                      as_of=request.args.get("as_of") or None))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+@app.post("/api/bean/market-observation")
+def bean_market_observation():
+    try:
+        body = request.get_json(silent=True)
+        if not isinstance(body, dict):
+            raise ValueError("Object required")
+        # Recompute from persisted, dated inputs, not user-supplied risk labels.
+        report = market_pressure(body.get("family", "steel"))
+        result = journal_market_review(report)
+        return jsonify({"assessment": report, "journal": result})
+    except (ValueError, TypeError) as exc:
+        return jsonify({"error": str(exc)}), 400
+    except (ImportError, RuntimeError, OSError) as exc:
+        return jsonify({"error": "BEAN Core journal unavailable", "reason": type(exc).__name__}), 503
 
 def main():
     app.run(host="127.0.0.1", port=int(os.environ.get("EZSTIMATE_PORT", "8765")), debug=False)
