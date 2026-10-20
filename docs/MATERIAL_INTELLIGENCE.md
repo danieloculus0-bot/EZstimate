@@ -50,7 +50,7 @@ MID already contained the correct operational entities: normalized material keys
 | Lead time, promised receipt and market indicators | Material supply/price-pressure watch, with dated evidence | Inflating a quote automatically |
 | Forecast action / owner / review date | Review work queue | Equating a heuristic with a supplier-confirmed commitment |
 
-The existing MID workbook needs a versioned **adapter** after its columns, units and forecast export completeness are verified. Its material forecast and job due date rules are useful independent evidence. The pricing database should never silently replace those values or overwrite Axiom's released estimate.
+The first versioned MID **XLSX read-only adapter** is now available at \`/api/pricing/mid-preview\` with a companion file picker in the local interface. It recognizes JobBOSS demand events, risk-register rows, and buyer action queues while retaining sheet/row source evidence. It does not automatically import MID forecast records into the persistent pricing database or change Axiom's released estimate. Expanded column/unit verification and sustained forecast snapshots are still planned.
 
 ## BEAN learning loop (next increment)
 
