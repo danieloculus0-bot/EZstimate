@@ -5,7 +5,7 @@
 <body><a href="#main" class="skip">Skip to workbench</a><div class="shell">
 <aside class="rail"><div class="brand"><div class="brand-mark">EZ</div><div>ENGINEERING<br><b>SUITE</b></div></div>
 <div class="rail-label">WORKFLOW</div>
-<nav><a href="#import">01&nbsp; Import</a><a href="#review">02&nbsp; Review</a><a href="#cost">03&nbsp; Cost</a><a href="#pricing">04&nbsp; Price Memory</a><a href="#bean">05&nbsp; BEAN</a></nav>
+<nav><a href="#import">01&nbsp; Import</a><a href="#review">02&nbsp; Review</a><a href="#cost">03&nbsp; Cost</a><a href="#pricing">04&nbsp; Price Memory</a><a href="#procurement">05&nbsp; Purchasing</a><a href="#bean">06&nbsp; BEAN</a></nav>
 <div class="rail-foot"><span class="dot"></span>LOCAL FIRST<br>Experimental alpha</div></aside>
 <main id="main"><header class="top"><b>EZstimate</b> / Manufacturing estimating <span id="connection">BEAN status checking</span></header>
 <div class="content">
@@ -78,7 +78,40 @@
 </div>
 <p class="hint">Public market indicators are refreshed on demand. EIA requires a free API key on the local server. BLS PPI is not supplier-specific. No automatic quote markup.</p>
 </div></div></section>
-<section id="bean"><div class="section-top"><div><div class="eyebrow">05 / REASON</div><h2>BEAN review</h2></div><span class="tag">ADVISORY ONLY</span></div>
+<section id="procurement"><div class="section-top"><div><div class="eyebrow">05 / PROCUREMENT</div><h2>Purchase requests · any ERP</h2></div><span class="tag">APPROVE BEFORE DISPATCH</span></div>
+<div class="two">
+<div class="panel">
+<h3>Request materials</h3><p class="hint">Create a purchase requisition for Purchasing, not a supplier purchase order. Material, buying unit, quantity and the job or evidence source remain traceable.</p>
+<div class="price-form">
+<label>Material / ERP key<input id="pr-material" placeholder="SHT-STL-0250X60X120-A36-HR"></label>
+<label>Quantity<input id="pr-quantity" type="number" step="any" min="0.00001" value="1"></label>
+<label>Purchasing unit<select id="pr-unit"><option value="sheet">Sheet</option><option value="ea">Each</option><option value="lb">lb</option><option value="ft">ft</option><option value="kg">kg</option><option value="m">m</option></select></label>
+<label>Needed by<input id="pr-need-date" type="date"></label>
+<label>Job / project<input id="pr-job" placeholder="Job number"></label>
+<label>Preferred supplier<input id="pr-supplier" placeholder="Optional"></label>
+<label>Source evidence<input id="pr-source-ref" placeholder="Drawing / MID forecast reference"></label>
+<label>Material description<input id="pr-description" placeholder="Grade, thickness, dimensions"></label>
+<label>Requested by<input id="pr-requestor" placeholder="Your name"></label>
+<label>Department<input id="pr-department" placeholder="Purchasing / Manufacturing"></label>
+</div>
+<label class="price-apply">Why do we need this?<textarea id="pr-justification" rows="3" placeholder="Job demand, inventory shortage, replenishment, supplier lead time"></textarea></label>
+<div class="actions"><button id="pr-from-price" class="secondary">Use current material</button><button id="pr-create" class="primary">Create purchase request draft</button></div>
+<div id="pr-draft-result" class="findings" role="status">No request drafted yet.</div>
+</div>
+<div class="panel">
+<h3>Approve and route to ERP</h3>
+<p class="hint">The approved version is frozen. ERP dispatch uses a configured adapter. A file export is marked exported; an HTTPS response means endpoint delivery, not verified ERP acceptance.</p>
+<div id="pr-connector" class="findings" role="status">Checking ERP connector configuration...</div>
+<div class="price-form">
+<label>Request ID<input id="pr-request-id" readonly placeholder="Created automatically"></label>
+<label>Approver<input id="pr-approver" placeholder="Authorized approver"></label>
+<label>Approval credential<input id="pr-approval-token" type="password" autocomplete="off" placeholder="Local approval token"></label>
+</div>
+<div class="actions"><button id="pr-approve" class="primary" disabled>Approve and send request</button><button id="pr-dispatch" class="secondary" disabled>Dispatch approved request</button><button id="pr-list" class="secondary">View recent requests</button></div>
+<div id="pr-delivery" class="findings" role="status">Awaiting a draft and approval.</div>
+</div></div>
+</section>
+<section id="bean"><div class="section-top"><div><div class="eyebrow">06 / REASON</div><h2>BEAN review</h2></div><span class="tag">ADVISORY ONLY</span></div>
 <div class="bean-panel"><img class="mascot" src="/bean-official.webp" alt="Official glossy lime-green BEAN mascot waving with two sprout leaves">
 <div><h3>BEAN <small id="bean-mode">Local checks only</small></h3><p>Identify unresolved estimating questions. When actual BEAN Core is installed, you can explicitly journal reviewed source evidence into its persistent memory.</p>
 <div class="actions"><button id="review-bean" class="primary">Review draft</button><button id="journal-bean" class="secondary" disabled>Journal to BEAN Core</button></div>
