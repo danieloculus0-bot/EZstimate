@@ -5,6 +5,7 @@ All prices and signals are supplied by the operator; there is no live data feed.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 import os
@@ -27,6 +28,7 @@ def database_path():
     return Path(configured).expanduser() if configured else Path.home() / ".ezstimate" / "price_memory.sqlite3"
 
 
+@contextmanager
 def _connect(path=None):
     target = Path(path) if path is not None else database_path()
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -65,7 +67,14 @@ def _connect(path=None):
         );
         CREATE INDEX IF NOT EXISTS signal_lookup ON market_signals(series, effective_date DESC);
     """)
-    return connection
+    try:
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
 
 
 def _required_text(data, field, maxlen=200):
