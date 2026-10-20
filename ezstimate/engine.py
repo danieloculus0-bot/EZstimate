@@ -27,6 +27,10 @@ FIELDS = {
     "quantity": r"\b(?:QTY|QUANTITY)\s*[:#-]?\s*(\d{1,8})\b",
     "po_number": r"\b(?:PURCHASE\s*ORDER|P\.?O\.?)\s*(?:NO\.?|NUMBER|#|:)?\s*[:#-]?\s*([A-Z0-9][A-Z0-9/-]{2,})",
     "payment_terms": r"\b(?:NET\s*(?:15|30|45|60|90)|DUE\s+ON\s+RECEIPT|PREPAID)\b",
+    "shipping_terms": r"\b(?:FOB\s+(?:ORIGIN|DESTINATION|PREPAID)|EXW\b|DAP\b|DDP\b)",
+    "required_date": r"\b(?:REQUIRED\s*(?:BY|DATE)|DELIVER\s*BY|SHIP\s*BY|DUE\s*DATE)\s*[:#]?\s*(\d{1,4}[/-]\d{1,2}[/-]\d{2,4})\b",
+    "po_unit_price": r"\b(?:UNIT\s*PRICE|PRICE\s*/\s*EA)\s*[:$ ]+\s*(\d+(?:\.\d{2})?)\b",
+    "po_total": r"\b(?:PO\s*TOTAL|ORDER\s*TOTAL)\s*[:$ ]+\s*(\d+(?:\.\d{2})?)\b",
 }
 PROCESSES = {
     "cutting": r"\b(?:LASER|PLASMA|WATERJET)\b",
@@ -141,10 +145,10 @@ def inspect_document(filename, content):
                 except (AttributeError, ValueError):
                     pass
     joined = "\n".join(text)
-    kind = "purchase_order" if re.search(r"\bPURCHASE\s+ORDER\b", joined, re.I) else "drawing"
+    kind = "purchase_order" if re.search(r"\bPURCHASE\s+ORDER\b|\bP\.?O\.?\s*(?:NO|NUMBER|#)", joined, re.I) else "drawing"
     fields = {}
     for key, pat in FIELDS.items():
-        if (key.startswith("po_") or key == "payment_terms") and kind != "purchase_order":
+        if (key.startswith("po_") or key.endswith("_terms") or key == "required_date") and kind != "purchase_order":
             continue
         val = candidate(pat, regions, name)
         if val:
@@ -176,6 +180,26 @@ def review_package(documents):
             issues.append({"field": key, "severity": "review",
                            "message": "Conflicting " + key.replace("_", " ") + " candidates",
                            "sources": [item["source"] for item in fields]})
+    # PO quantity mismatch is meaningful only when an identical part is
+    # present in a supplied BOM. Assembly subcomponents are not compared.
+    for po in (d for d in documents if d.get("kind") == "purchase_order"):
+        fields = po.get("fields", {})
+        if "part_number" not in fields or "quantity" not in fields:
+            continue
+        part = fields["part_number"]["value"].casefold()
+        for doc in documents:
+            if doc is po:
+                continue
+            for row in doc.get("bom", []):
+                if row.get("part_number", "").casefold() == part:
+                    try:
+                        po_qty = int(fields["quantity"]["value"])
+                        if po_qty != int(row["quantity"]):
+                            issues.append({"field": "quantity", "severity": "review",
+                                "message": "PO quantity differs from BOM for matching part " + row["part_number"],
+                                "sources": [po["filename"], doc["filename"]]})
+                    except (ValueError, TypeError):
+                        pass
     for doc in documents:
         for note in doc.get("warnings", []):
             issues.append({"field": "document", "severity": "review",
