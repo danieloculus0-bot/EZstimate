@@ -150,3 +150,36 @@ def adopt_axiom_cost(source_key, reviewer, *, path=None):
                        SET status='adopted',reviewed_by=?,reviewed_utc=?
                        WHERE source_key=?""",(reviewer.strip(),_now(),source_key))
     return {"source_key":source_key,"new":True,"status":"adopted"}
+
+
+
+def main(argv=None):
+    """Local, explicit import/review CLI for Axiom actual cost observations."""
+    import argparse
+    from pathlib import Path
+
+    parser=argparse.ArgumentParser(description="EZstimate actual invoice cost review")
+    parser.add_argument("--db",help="Optional EZstimate price-memory DB path")
+    subs=parser.add_subparsers(dest="command",required=True)
+    stage=subs.add_parser("stage",help="Stage Axiom feedback JSON; do not adopt prices")
+    stage.add_argument("feedback_json",help="Axiom /purchasing/costs/feedback.json download")
+    subs.add_parser("inbox",help="List staged cost evidence")
+    adopt=subs.add_parser("adopt",help="Review one observation and adopt material price")
+    adopt.add_argument("source_key",help="AXIOM-INVOICE-LINE-<ID>")
+    adopt.add_argument("--reviewer",required=True,help="Local reviewer label")
+    args=parser.parse_args(argv)
+    path=args.db
+    if args.command=="stage":
+        data=json.loads(Path(args.feedback_json).read_text(encoding="utf-8"))
+        result=stage_axiom_cost_feedback(data,path=path)
+    elif args.command=="inbox":
+        result=[{"source_key":x["source_key"],"status":x["status"],
+                 "reviewed_by":x["reviewed_by"]} for x in actual_cost_inbox(path=path)]
+    else:
+        result=adopt_axiom_cost(args.source_key,args.reviewer,path=path)
+    print(json.dumps(result,indent=2,sort_keys=True))
+    return 0
+
+
+if __name__=="__main__":
+    raise SystemExit(main())
