@@ -63,7 +63,7 @@ class AxiomCostFeedbackTests(unittest.TestCase):
     def test_conflicting_replay_is_rejected_without_changing_memory(self):
         original=self.observation()
         stage_axiom_cost_feedback(self.feed([original]),path=self.db)
-        changed=self.observation(invoiced_unit_price="99")
+        changed=self.observation(invoiced_unit_price="16.25")
         with self.assertRaisesRegex(ValueError,"different evidence"):
             stage_axiom_cost_feedback(self.feed([changed]),path=self.db)
         self.assertEqual(len(actual_cost_inbox(path=self.db)),1)
