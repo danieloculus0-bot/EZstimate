@@ -20,3 +20,6 @@ section{margin-bottom:37px;scroll-margin-top:95px}.section-top{display:flex;just
 .mid-import>strong{display:block;font-size:14px;color:var(--lime);margin-bottom:5px}
 .mid-import input[type=file]{display:block;margin:9px 0 12px;width:100%;max-width:100%}
 .mid-import .record{font-size:12px;word-break:break-word}
+
+/* Black canvas portfolio standard · neutral panels; preserve application controls and accents */
+:root{--bg:#050607;--panel:#111417;--border:#343a3d}html,body{background:#050607}.rail{background:#0b0d0f}
