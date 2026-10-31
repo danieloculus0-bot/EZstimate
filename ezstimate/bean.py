@@ -47,7 +47,8 @@ def journal(documents, quote, assessment):
     evidence = [
         {"source": d.get("filename"), "kind": d.get("kind"), "bom_count": len(d.get("bom", [])),
          "fields": {k: {"value": v["value"], "page": v.get("page"),
-                        "region": v.get("region")} for k, v in d.get("fields", {}).items()}}
+                        "region": v.get("region")} for k, v in d.get("fields", {}).items()},
+         "fabrication_features": d.get("fabrication_features", [])}
         for d in documents
     ]
     observation = {"schema": "ezstimate.source_observation.v1",
