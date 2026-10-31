@@ -9,6 +9,7 @@ import io
 import re
 from pathlib import Path
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from .fabrication import extract_fabrication_features
 
 GRADES = (
     ("ASTM A36", r"\b(?:ASTM\s*)?A[\s-]?36\b"),
@@ -118,7 +119,7 @@ def inspect_document(filename, content):
                 finally:
                     wb.close()
         bom = [item for sheet, rowset in rows for item in bom_table(rowset, name, sheet=sheet)]
-        return {"filename": name, "kind": "bom", "fields": {}, "bom": bom, "process_hints": [],
+        return {"filename": name, "kind": "bom", "fields": {}, "bom": bom, "process_hints": [], "fabrication_features": [],
                 "warnings": [] if bom else ["No recognizable BOM part and quantity headers"]}
     if ext != ".pdf":
         raise ValueError("Supported files: PDF, CSV and XLSX")
@@ -170,7 +171,9 @@ def inspect_document(filename, content):
     if not bom:
         warnings.append("No structured PDF BOM found; add lines or import spreadsheet")
     return {"filename": name, "kind": kind, "fields": fields,
-            "bom": bom, "process_hints": hints, "warnings": warnings}
+            "bom": bom, "process_hints": hints,
+            "fabrication_features": extract_fabrication_features(regions, name) if kind == "drawing" else [],
+            "warnings": warnings}
 
 def review_package(documents):
     issues = []
