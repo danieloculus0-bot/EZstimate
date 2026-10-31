@@ -56,6 +56,11 @@ function renderDocs(){
    }
    if(!count)card.append(el("div","No named fields extracted.","detail"));
    card.append(el("small",(d.bom||[]).length+" BOM row(s) detected"));
+   for(const f of (d.fabrication_features||[])){
+     const details=Object.entries(f.attributes||{}).filter(([,v])=>v!==null&&v!=="")
+       .map(([key,val])=>key.replaceAll("_"," ")+": "+val).join(", ");
+     card.append(el("div",f.process+" · "+(details||"details unknown")+" · "+source(f)+" · review drawing callout","detail"));
+   }
    if(d.process_hints&&d.process_hints.length)card.append(el("small",
        "Process clues: "+d.process_hints.map(v=>v.value).join(", ")+" (unverified)"));
    byId("documents").append(card);
