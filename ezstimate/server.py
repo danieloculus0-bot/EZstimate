@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from flask import Flask, jsonify, request, send_from_directory
 from .engine import inspect_document, price_quote, review_package
+from .blank_estimate import estimate_component_blank
 from .bean import local_review, core_status, journal, journal_market_review, journal_forecast_assessment
 from .pricing import remember_price, price_history, record_market_signal, market_pressure, database_path
 from .mid_adapter import preview_mid
@@ -61,6 +62,15 @@ def quote():
     if not isinstance(body, dict):
         return jsonify({"error": "JSON object required"}), 400
     return jsonify(price_quote(body))
+
+@app.post("/api/blank/estimate")
+def blank_estimate():
+    """Local draft helper; does not mutate ERP or quote records."""
+    try:
+        return jsonify(estimate_component_blank(request.get_json(silent=True)))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
 
 @app.post("/api/bean/review")
 def bean_review():
