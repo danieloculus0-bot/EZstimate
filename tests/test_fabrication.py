@@ -1,7 +1,7 @@
 """Synthetic tests for source-backed fabrication candidates."""
 import unittest
 import fitz
-from ezstimate.fabrication import extract_fabrication_features
+from ezstimate.fabrication import extract_fabrication_features, extract_flat_pattern_candidates
 from ezstimate.engine import inspect_document
 
 
@@ -28,6 +28,30 @@ class FabricationCandidatesTests(unittest.TestCase):
         self.assertIsNone(bend["attributes"]["radius"])
         self.assertIsNone(bend["attributes"]["count"])
         self.assertIsNone(weld["attributes"]["length"])
+
+    def test_explicit_flat_notes_only_with_provenance_and_no_unit_guess(self):
+        regions = [
+            {"region": "full page", "page": 1,
+             "text": "FLAT PATTERN: 10.5 X 4.0 IN\n10.5 X 4.0\nBLANK SIZE 20 x 12 MM"},
+            {"region": "lower-right title block", "page": 1,
+             "text": "FLAT PATTERN: 10.5 X 4.0 IN"},
+        ]
+        found = extract_flat_pattern_candidates(regions, "synthetic.pdf")
+        self.assertEqual(len(found), 2)
+        self.assertEqual(found[0]["unit"], "in")
+        self.assertEqual(found[1]["unit"], "mm")
+        self.assertEqual(found[0]["page"], 1)
+        self.assertTrue(found[0]["needs_review"])
+
+    def test_pdf_flat_pattern_intake_is_review_only(self):
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((72, 100), "FLAT PATTERN: 10.5 X 4.0 IN")
+        data = inspect_document("flat.pdf", doc.tobytes())
+        doc.close()
+        self.assertEqual(data["flat_pattern_candidates"][0]["length"], "10.5")
+        self.assertEqual(data["flat_pattern_candidates"][0]["width"], "4.0")
+        self.assertNotIn("material_cost_each", data["flat_pattern_candidates"][0])
 
     def test_pdf_intake_exposes_candidates_not_prices_or_geometry_claims(self):
         doc = fitz.open()
