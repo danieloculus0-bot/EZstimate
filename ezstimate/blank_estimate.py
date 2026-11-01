@@ -96,6 +96,8 @@ def estimate_component_blank(payload):
             raise ValueError("Bend angle must be under 180 degrees")
         if not Decimal("0.20") <= k_factor <= Decimal("0.50"):
             raise ValueError("K-factor must be between 0.20 and 0.50")
+        if allowance is None:
+            raise ValueError("Dimension cushion is required (default 0.030 in)")
         if allowance > Decimal("0.250"):
             raise ValueError("Dimension cushion cannot exceed 0.250 in")
         tangent = Decimal(str(tan(radians(float(angle)) / 2)))
