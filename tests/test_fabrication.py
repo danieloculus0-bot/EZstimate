@@ -32,7 +32,7 @@ class FabricationCandidatesTests(unittest.TestCase):
     def test_explicit_flat_notes_only_with_provenance_and_no_unit_guess(self):
         regions = [
             {"region": "full page", "page": 1,
-             "text": "FLAT PATTERN: 10.5 X 4.0 IN\\n10.5 X 4.0\\nBLANK SIZE 20 x 12 MM"},
+             "text": "FLAT PATTERN: 10.5 X 4.0 IN\n10.5 X 4.0\nBLANK SIZE 20 x 12 MM"},
             {"region": "lower-right title block", "page": 1,
              "text": "FLAT PATTERN: 10.5 X 4.0 IN"},
         ]
