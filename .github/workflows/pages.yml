@@ -6,6 +6,11 @@ on:
       - "web/**"
       - "tests/demo-engine.test.mjs"
       - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - "tests/demo-engine.test.mjs"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,6 +34,7 @@ jobs:
   deploy:
     name: Publish public demo
     needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
