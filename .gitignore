@@ -1,0 +1,31 @@
+# Customer drawings, controlled CAD, POs and proprietary price data: NEVER commit.
+# Keep all user-provided prints and pricing off public GitHub, including tests.
+*.pdf
+*.PDF
+*.dwg
+*.DWG
+*.dxf
+*.DXF
+*.step
+*.STEP
+*.stp
+*.STP
+*.iges
+*.igs
+*.sldprt
+*.sldasm
+*.ipt
+*.iam
+*.stl
+*.xlsx
+*.xls
+*.csv
+private_inputs/
+private_data/
+customer_documents/
+pricebooks/
+*.sqlite3
+*.sqlite
+*.db
+__pycache__/
+.pytest_cache/
