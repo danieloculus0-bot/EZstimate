@@ -6,11 +6,16 @@ on:
       - "web/**"
       - "tests/demo-engine.test.mjs"
       - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "web/**"
+      - "tests/demo-engine.test.mjs"
+      - ".github/workflows/pages.yml"
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   test:
@@ -29,6 +34,7 @@ jobs:
   deploy:
     name: Publish public demo
     needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -46,6 +52,13 @@ jobs:
           cp web/demo.html _site/index.html
           cp web/demo.css web/style.css web/demo.mjs web/engine.mjs web/bean-official.webp _site/
           touch _site/.nojekyll
+      - name: Verify assembled public navigation
+        run: |
+          grep -Fq 'https://danieloculus0-bot.github.io/BEAN/portfolio/' _site/index.html
+          grep -Fq 'https://danieloculus0-bot.github.io/Axiom_Beta/erp/' _site/index.html
+          grep -Fq 'EZ Estimate' _site/index.html
+          grep -Fq 'id="sample"' _site/index.html
+          grep -Fq 'id="calculate"' _site/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

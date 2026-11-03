@@ -60,3 +60,19 @@ test("canonical BEAN mascot is bundled and referenced in both interfaces",()=>{
   const server=readFileSync(new URL("../ezstimate/server.py",import.meta.url),"utf8");
   assert.match(server,/"bean-official\.webp"/);
 });
+
+test("published Pages entrypoint keeps canonical navigation and live demo controls",()=>{
+  const html=readFileSync(new URL("../web/demo.html",import.meta.url),"utf8");
+  const workflow=readFileSync(new URL("../.github/workflows/pages.yml",import.meta.url),"utf8");
+  assert.match(workflow,/cp web\/demo\.html _site\/index\.html/);
+  assert.match(workflow,/Verify assembled public navigation/);
+  for(const url of [
+    "https://danieloculus0-bot.github.io/BEAN/portfolio/",
+    "https://danieloculus0-bot.github.io/Axiom_Beta/erp/",
+  ]) assert.ok(html.includes('href="'+url+'"'),"Missing published navigation link: "+url);
+  assert.match(html,/EZ Estimate/);
+  for(const id of ["sample","clear","scan","calculate","beanReview"]) {
+    assert.ok(html.includes('id="'+id+'"'),"Missing interactive demo control: "+id);
+  }
+  assert.doesNotMatch(html,/<meta[^>]*http-equiv=["']refresh/i);
+});
