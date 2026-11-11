@@ -64,5 +64,51 @@ class EstimateTests(unittest.TestCase):
         self.assertEqual(result["fields"]["revision"]["value"], "B")
         self.assertEqual(result["fields"]["material"]["region"], "lower-right title block")
 
+
+class SpatialDrawingRegressionTests(unittest.TestCase):
+    """Public synthetic layouts; customer drawings are never checked in."""
+    def fake_print(self, material=True, bom=False):
+        import fitz
+        doc=fitz.open()
+        page=doc.new_page(width=792,height=612)
+        for x,y,s,size in [(715,498,"REV",5),(726,498,"C",7),
+                           (704,520,"NO",5),(714,520,"987654",9),
+                           (638,498,"MATL",5)]:
+            page.insert_text((x,y),s,fontsize=size)
+        if material:
+            page.insert_text((654,498),"MFX5000",fontsize=7)
+        else:
+            page.insert_text((450,432),"QUALITY MATL NO QC2003",fontsize=9)
+        if bom:
+            for x,s in [(537,"ITEM"),(549,"QTY"),(573,"PART"),
+                        (621,"DESCRIPTION"),(729,"MATRL")]:
+                page.insert_text((x,85),s,fontsize=5)
+            for y,item,qty,part,description in [(90,"1","2","P-101","TUBE SQUARE"),
+                                                (96,"2","4","P-102","BRACKET PLATE")]:
+                for x,s in [(540,item),(551,qty),(570,part),
+                            (603,description),(728,"MFX5000")]:
+                    page.insert_text((x,y),s,fontsize=5)
+        data=doc.tobytes()
+        doc.close()
+        return data
+
+    def test_labeled_lower_right_titleblock(self):
+        result=inspect_document("fictional_print.pdf",self.fake_print())
+        self.assertEqual(result["fields"]["part_number"]["value"],"987654")
+        self.assertEqual(result["fields"]["revision"]["value"],"C")
+        self.assertEqual(result["fields"]["material"]["value"],"MFX5000")
+        self.assertTrue(result["fields"]["material"]["needs_review"])
+
+    def test_unlabeled_quality_note_does_not_become_material(self):
+        result=inspect_document("fictional_print.pdf",self.fake_print(material=False))
+        self.assertNotIn("material",result["fields"])
+
+    def test_spatial_bom_import_marks_rows_for_review(self):
+        result=inspect_document("fictional_bom.pdf",self.fake_print(bom=True))
+        self.assertGreaterEqual(len(result["bom"]),2)
+        self.assertEqual(result["bom"][0]["quantity"],2)
+        self.assertTrue(all(row["needs_review"] for row in result["bom"]))
+
+
 if __name__ == "__main__":
     unittest.main()
