@@ -144,7 +144,7 @@ def spatial_pdf_bom(page,source,number):
         combined = [
             (x0, x1, (y0 + y1) / 2)
             for x0, y0, x1, y1, word, *_ in page.get_text("words")
-            if re.fullmatch(r"ITEM\\s*QTY", word, re.I)
+            if re.fullmatch(r"ITEM\s*QTY", word, re.I)
             and (y0 + y1) / 2 < r.height * .5
             and x0 > r.width * .45
         ]
