@@ -1,6 +1,6 @@
 "use strict";
 // EZstimate browser client, backed by local Python quote engine.
-const st={documents:[],issues:[],rows:[],quote:null,bean:null,priceCandidate:null};
+const st={documents:[],issues:[],rows:[],quote:null,bean:null,priceCandidate:null,blankEstimate:null,blankLineIndex:-1};
 const byId=id=>document.getElementById(id);
 const cols=["part_number","quantity","material_cost_each","labor_hours_each","shop_rate_per_hour",
             "outside_cost_each","setup_cost_total","scrap_pct","margin_pct"];
@@ -25,14 +25,14 @@ function renderRows(){
      inp.className=field==="part_number"?"part":"";
      if(field!=="part_number"){inp.type="number";inp.step=field==="quantity"?"1":"any";inp.min="0";}
      inp.value=row[field];inp.setAttribute("aria-label",labels[i]+" line "+(index+1));
-     inp.addEventListener("input",()=>{row[field]=inp.value;st.quote=null;byId("export").disabled=true;
+     inp.addEventListener("input",()=>{row[field]=inp.value;resetBlank();st.quote=null;byId("export").disabled=true;
        byId("total").textContent="N/A";byId("quote-status").textContent="Inputs changed. Recalculate.";});
      td.append(inp);
      if(field==="part_number")td.append(el("small",row.source||"manual"));
      tr.append(td);
    });
    const td=el("td"),remove=el("button","×","remove");remove.setAttribute("aria-label","Remove row "+(index+1));
-   remove.addEventListener("click",()=>{st.rows.splice(index,1);st.quote=null;byId("export").disabled=true;renderRows();});
+   remove.addEventListener("click",()=>{st.rows.splice(index,1);resetBlank();st.quote=null;byId("export").disabled=true;renderRows();});
    td.append(remove);tr.append(td);t.append(tr);
  });
  const target=byId("price-line");
@@ -43,6 +43,7 @@ function renderRows(){
    target.value=prior && Number(prior)<st.rows.length?prior:"";
    byId("apply-price").disabled=!(st.priceCandidate&&st.priceCandidate.price_unit==="ea"&&target.value!=="");
  }
+ refreshBlankSelector();
 }
 function renderDocs(){
  clear(byId("documents"));clear(byId("exceptions"));
@@ -79,7 +80,7 @@ async function scan(){
  try{
    const fd=new FormData();for(const file of chosen)fd.append("files",file,file.name);
    const j=await req("/api/intake",{method:"POST",body:fd});
-   st.documents=j.documents;st.issues=j.issues;st.rows=[];st.quote=null;st.bean=null;
+   st.documents=j.documents;st.issues=j.issues;st.rows=[];st.quote=null;st.bean=null;resetBlank();
    for(const d of st.documents){
      if(d.bom&&d.bom.length){for(const row of d.bom)addRow(row);}
      else if(d.kind==="drawing"&&d.fields.part_number)addRow({
@@ -478,5 +479,71 @@ byId("pr-approve").addEventListener("click",prApprove);
 byId("pr-dispatch").addEventListener("click",prDispatch);
 byId("pr-list").addEventListener("click",prList);
 prConnectorStatus();
+
+function resetBlank(){
+ st.blankEstimate=null;st.blankLineIndex=-1;
+ byId("blank-apply").disabled=true;
+ byId("blank-results").textContent="Inputs changed. Recalculate and review before using material cost.";
+}
+function refreshBlankSelector(){
+ const select=byId("blank-line"),prior=select.value;
+ clear(select);
+ const initial=el("option","Select an individual component");initial.value="";select.append(initial);
+ st.rows.forEach((row,i)=>{
+   const option=el("option",(i+1)+": "+(row.part_number||"Unnamed"));
+   option.value=String(i);select.append(option);
+ });
+ select.value=prior!==""&&Number(prior)<st.rows.length?prior:(st.rows.length===1?"0":"");
+ if(!st.rows[Number(select.value)])select.value="";
+ byId("blank-apply").disabled=!(st.blankEstimate&&st.blankEstimate.material_cost_each!==null&&
+   select.value===String(st.blankLineIndex));
+}
+async function calculateBlankEstimate(){
+ const select=byId("blank-line"),index=select.value;
+ if(index===""||!st.rows[Number(index)]){
+   byId("blank-results").textContent="Choose one quote line first.";return;
+ }
+ const mappings={
+   flat_length_in:"blank-flat-length",flat_width_in:"blank-flat-width",
+   flat_area_sq_in:"blank-flat-area",outside_leg_sum_in:"blank-leg-sum",
+   blank_width_in:"blank-width",thickness_in:"blank-thickness",
+   inside_radius_in:"blank-radius",bend_angle_deg:"blank-angle",
+   bend_count:"blank-count",k_factor:"blank-k",cushion_in:"blank-cushion",
+   material_price_per_sq_in:"blank-price"
+ };
+ const payload={scope:"individual_component",basis:byId("blank-basis").value};
+ for(const [key,id] of Object.entries(mappings))payload[key]=byId(id).value.trim();
+ const selectedPart=st.rows[Number(index)].part_number;
+ resetBlank();
+ try{
+   const result=await req("/api/blank/estimate",{
+     method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)
+   });
+   if(index!==select.value||st.rows[Number(index)]?.part_number!==selectedPart){
+     byId("blank-results").textContent="Quote line changed during calculation. Recalculate.";return;
+   }
+   st.blankEstimate=result;st.blankLineIndex=Number(index);
+   byId("blank-results").textContent="Draft blank area: "+result.material_area_sq_in+
+     " sq in; material cost: "+(result.material_cost_each===null?"Unknown":"$"+result.material_cost_each)+
+     ". Review assumptions: "+result.assumptions.join("; ")+". Not approved.";
+   byId("blank-apply").disabled=result.material_cost_each===null;
+ }catch(e){byId("blank-results").textContent="Blank calculation rejected: "+e.message;}
+}
+function applyBlankEstimate(){
+ const index=Number(byId("blank-line").value);
+ if(!st.blankEstimate||index!==st.blankLineIndex||!st.rows[index]||
+    st.blankEstimate.material_cost_each===null)return;
+ st.rows[index].material_cost_each=st.blankEstimate.material_cost_each;
+ st.rows[index].material_cost_basis=st.blankEstimate.basis;
+ st.quote=null;byId("export").disabled=true;byId("total").textContent="N/A";
+ byId("quote-status").textContent="Reviewed material estimate applied; recalculate draft quote.";
+ resetBlank();renderRows();
+ byId("blank-results").textContent="Draft material cost entered for "+(st.rows[index].part_number||"selected line")+". Recalculate quote.";
+}
+byId("blank-panel").addEventListener("input",resetBlank);
+byId("blank-panel").addEventListener("change",resetBlank);
+byId("blank-estimate").addEventListener("click",calculateBlankEstimate);
+byId("blank-apply").addEventListener("click",applyBlankEstimate);
+refreshBlankSelector();
 
 core();

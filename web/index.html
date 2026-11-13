@@ -20,6 +20,27 @@
 <div class="two"><div class="panel"><h3>Fields &amp; BOM sources</h3><div id="documents" class="stack">No documents loaded.</div></div>
 <div class="panel"><h3>Exceptions &amp; conflicts</h3><div id="exceptions" class="stack">Import documents to see findings.</div></div></div></section>
 <section id="cost"><div class="section-top"><div><div class="eyebrow">03 / CALCULATE</div><h2>Draft cost &amp; selling price</h2></div><span class="tag">NO INVENTED PRICES</span></div>
+<div class="panel" id="blank-panel"><h3>Component blank material estimator</h3>
+<p class="hint">One reviewed component only. Prefer actual flat-pattern area or dimensions. K-factor is a limited approximation for simple parallel bends, not a substitute for CAD. All costs remain draft until reviewed.</p>
+<div class="price-form">
+<label>Quote line<select id="blank-line"><option value="">Select a part</option></select></label>
+<label>Basis<select id="blank-basis"><option value="flat_pattern">Reviewed flat pattern</option><option value="k_factor_approximation">K-factor bend allowance</option></select></label>
+<label>Flat length (in)<input id="blank-flat-length" type="number" min="0" step="any"></label>
+<label>Flat width (in)<input id="blank-flat-width" type="number" min="0" step="any"></label>
+<label>Actual flat area (sq in, optional)<input id="blank-flat-area" type="number" min="0" step="any"></label>
+<label>Outside leg sum (in)<input id="blank-leg-sum" type="number" min="0" step="any"></label>
+<label>Unfolded width (in)<input id="blank-width" type="number" min="0" step="any"></label>
+<label>Material thickness (in)<input id="blank-thickness" type="number" min="0" step="any"></label>
+<label>Inside radius (in)<input id="blank-radius" type="number" min="0" step="any"></label>
+<label>Bend angle (degrees)<input id="blank-angle" type="number" min="0" max="179" step="any"></label>
+<label>Bend count<input id="blank-count" type="number" min="1" step="1"></label>
+<label>K-factor (editable)<input id="blank-k" type="number" value=".44" min=".20" max=".50" step="any"></label>
+<label>Extra per dimension (in)<input id="blank-cushion" type="number" value=".030" min="0" max=".250" step="any"></label>
+<label>Reviewed material price ($ per sq in, optional)<input id="blank-price" type="number" min="0" step="any"></label>
+</div>
+<div class="actions"><button type="button" class="secondary" id="blank-estimate">Calculate blank</button><button type="button" class="secondary" id="blank-apply" disabled>Apply reviewed material cost to line</button></div>
+<div class="findings" id="blank-results" role="status">Select a component, then enter reviewed dimensions.</div></div>
+
 <div class="panel"><p class="hint">Enter material cost, labor hours and shop rate. Outside costs, setup, scrap and gross margin are explicit editable assumptions. Gross margin is not markup.</p>
 <div class="scroll"><table><thead><tr><th>Part / Source</th><th>Qty</th><th>Material $/ea</th><th>Labor h/ea</th><th>Shop $/h</th><th>Outside $/ea</th><th>Setup $/lot</th><th>Scrap %</th><th>Margin %</th><th></th></tr></thead><tbody id="lines"></tbody></table></div>
 <div class="actions"><button id="addline" class="secondary">+ Add line</button><button id="calculate" class="primary">Calculate draft</button></div></div>
