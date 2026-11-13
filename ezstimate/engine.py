@@ -137,6 +137,21 @@ def spatial_pdf_bom(page,source,number):
         matches=[(x,y) for x,y,s in words if s.upper()==key and
                  y<r.height*.5 and x>r.width*.45]
         if matches: heads[key]=min(matches,key=lambda z:z[1])
+    # PyMuPDF may join adjacent column labels into a single "ITEMQTY" word,
+    # even when the source PDF drew them as separate labels. Recover only
+    # this known header pair within an otherwise aligned upper-page table.
+    if "ITEM" not in heads or "QTY" not in heads:
+        combined = [
+            (x0, x1, (y0 + y1) / 2)
+            for x0, y0, x1, y1, word, *_ in page.get_text("words")
+            if re.fullmatch(r"ITEM\\s*QTY", word, re.I)
+            and (y0 + y1) / 2 < r.height * .5
+            and x0 > r.width * .45
+        ]
+        if combined and all(key in heads for key in ("PART", "DESCRIPTION", "MATRL")):
+            left, right, middle = min(combined, key=lambda item: item[2])
+            heads.setdefault("ITEM", (left, middle))
+            heads.setdefault("QTY", (left + (right - left) * 4 / 7, middle))
     if len(heads)!=5 or max(y for x,y in heads.values())-min(y for x,y in heads.values())>3:
         return []
     base=heads["ITEM"][1]
