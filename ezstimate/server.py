@@ -65,12 +65,11 @@ def quote():
 
 @app.post("/api/blank/estimate")
 def blank_estimate():
-    """Local draft helper; does not mutate ERP or quote records."""
+    """Review-required local blank estimate; does not mutate quote or ERP."""
     try:
         return jsonify(estimate_component_blank(request.get_json(silent=True)))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
-
 
 @app.post("/api/bean/review")
 def bean_review():

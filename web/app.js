@@ -1,6 +1,6 @@
 "use strict";
 // EZstimate browser client, backed by local Python quote engine.
-const st={documents:[],issues:[],rows:[],quote:null,bean:null,priceCandidate:null,blankEstimate:null};
+const st={documents:[],issues:[],rows:[],quote:null,bean:null,priceCandidate:null,blankEstimate:null,blankLineIndex:-1};
 const byId=id=>document.getElementById(id);
 const cols=["part_number","quantity","material_cost_each","labor_hours_each","shop_rate_per_hour",
             "outside_cost_each","setup_cost_total","scrap_pct","margin_pct"];
@@ -25,14 +25,14 @@ function renderRows(){
      inp.className=field==="part_number"?"part":"";
      if(field!=="part_number"){inp.type="number";inp.step=field==="quantity"?"1":"any";inp.min="0";}
      inp.value=row[field];inp.setAttribute("aria-label",labels[i]+" line "+(index+1));
-     inp.addEventListener("input",()=>{row[field]=inp.value;if(field==="part_number")invalidateBlank();st.quote=null;byId("export").disabled=true;
+     inp.addEventListener("input",()=>{row[field]=inp.value;resetBlank();st.quote=null;byId("export").disabled=true;
        byId("total").textContent="N/A";byId("quote-status").textContent="Inputs changed. Recalculate.";});
      td.append(inp);
      if(field==="part_number")td.append(el("small",row.source||"manual"));
      tr.append(td);
    });
    const td=el("td"),remove=el("button","×","remove");remove.setAttribute("aria-label","Remove row "+(index+1));
-   remove.addEventListener("click",()=>{st.rows.splice(index,1);st.quote=null;invalidateBlank();byId("export").disabled=true;renderRows();});
+   remove.addEventListener("click",()=>{st.rows.splice(index,1);resetBlank();st.quote=null;byId("export").disabled=true;renderRows();});
    td.append(remove);tr.append(td);t.append(tr);
  });
  const target=byId("price-line");
@@ -43,7 +43,7 @@ function renderRows(){
    target.value=prior && Number(prior)<st.rows.length?prior:"";
    byId("apply-price").disabled=!(st.priceCandidate&&st.priceCandidate.price_unit==="ea"&&target.value!=="");
  }
- refreshBlankLine();
+ refreshBlankSelector();
 }
 function renderDocs(){
  clear(byId("documents"));clear(byId("exceptions"));
@@ -62,9 +62,6 @@ function renderDocs(){
        .map(([key,val])=>key.replaceAll("_"," ")+": "+val).join(", ");
      card.append(el("div",f.process+" · "+(details||"details unknown")+" · "+source(f)+" · review drawing callout","detail"));
    }
-   for(const flat of (d.flat_pattern_candidates||[]))card.append(el("div",
-     "Flat-pattern candidate: "+flat.length+" × "+flat.width+" "+(flat.unit||"(units unknown)")+
-     " · "+source(flat)+" · review source and dimensions","detail"));
    if(d.process_hints&&d.process_hints.length)card.append(el("small",
        "Process clues: "+d.process_hints.map(v=>v.value).join(", ")+" (unverified)"));
    byId("documents").append(card);
@@ -75,108 +72,6 @@ function renderDocs(){
    card.append(el("small",(issue.sources||[]).join(", ")));byId("exceptions").append(card);
  }
 }
-
-function invalidateBlank(){
- st.blankEstimate=null;
- byId("blank-apply").disabled=true;
- byId("blank-results").textContent="Inputs changed. Recalculate and review before using a material cost.";
-}
-function refreshBlankLine(){
- const target=byId("blank-line");
- if(!target)return;
- const old=target.value;
- clear(target);
- const first=el("option","Select an individual component");first.value="";target.append(first);
- st.rows.forEach((row,i)=>{const option=el("option",(i+1)+": "+(row.part_number||"Unnamed"));
-   option.value=String(i);target.append(option);});
- target.value=(old!==""&&Number(old)<st.rows.length)?old:(st.rows.length===1?"0":"");
- if(!st.rows[Number(target.value)])target.value="";
- byId("blank-apply").disabled=!(st.blankEstimate&&st.blankEstimate.material_cost_each&&
-   target.value===String(st.blankEstimate.lineIndex));
-}
-function prefillBlankEvidence(){
- if(st.rows.length!==1)return; // No cross-part evidence association from ambiguous document sets.
- const drawings=st.documents.filter(d=>d.kind==="drawing");
- if(drawings.length!==1)return;
- const candidates=drawings[0].flat_pattern_candidates||[];
- const typed=candidates.filter(f=>f.unit==="in");
- if(candidates.length===1&&typed.length===1){
-   byId("blank-basis").value="flat_pattern";
-   byId("blank-flat-length").value=typed[0].length;
-   byId("blank-flat-width").value=typed[0].width;
-   byId("blank-results").textContent="Proposed flat dimensions from "+source(typed[0])+
-     "; verify against the drawing before calculating.";
- }else if((drawings[0].fabrication_features||[]).filter(f=>f.process==="bending").length===1){
-   const bend=drawings[0].fabrication_features.find(f=>f.process==="bending").attributes;
-   byId("blank-basis").value="k_factor_approximation";
-   if(bend.radius!==null)byId("blank-radius").value=bend.radius;
-   if(bend.angle_degrees!==null)byId("blank-angle").value=bend.angle_degrees;
-   if(bend.count!==null)byId("blank-count").value=bend.count;
-   byId("blank-results").textContent="Bend annotation proposed from drawing. Verify values and enter the missing geometry.";
- }
-}
-function blankRequest(){
- const fields={
-   flat_length_in:"blank-flat-length", flat_width_in:"blank-flat-width",
-   flat_area_sq_in:"blank-flat-area", outside_leg_sum_in:"blank-leg-sum",
-   blank_width_in:"blank-width", thickness_in:"blank-thickness",
-   inside_radius_in:"blank-radius", bend_angle_deg:"blank-angle",
-   bend_count:"blank-count", k_factor:"blank-k", cushion_in:"blank-cushion",
-   material_price_per_sq_in:"blank-price"
- };
- const input={scope:"individual_component",basis:byId("blank-basis").value};
- for(const [key,id] of Object.entries(fields))input[key]=byId(id).value.trim();
- return input;
-}
-async function estimateBlank(){
- const target=byId("blank-line").value;
- const i=target===""?-1:Number(target);
- const row=st.rows[i];
- if(!row||!row.part_number.trim()){
-   byId("blank-results").textContent="Select a quote line with a known individual part number.";
-   return;
- }
- byId("blank-estimate").disabled=true;
- try{
-   const result=await req("/api/blank/estimate",{method:"POST",
-     headers:{"Content-Type":"application/json"},body:JSON.stringify(blankRequest())});
-   st.blankEstimate={...result,lineIndex:i,partNumber:row.part_number};
-   const output=byId("blank-results");clear(output);
-   output.append(el("div","DRAFT · "+(result.basis==="flat_pattern"?"Supplied flat pattern":"K-factor approximation")+
-     " · "+result.material_area_sq_in+" sq in per part","record"));
-   output.append(el("p","Blank: "+(result.length_in||"unknown")+" × "+(result.width_in||"unknown")+
-     " in · material $/ea: "+(result.material_cost_each===null?"not supplied":result.material_cost_each)));
-   if(result.bend_deduction_each_in)output.append(el("p","Bend deduction: "+
-      result.bend_deduction_each_in+" in each · K="+result.k_factor+
-      " · cushion "+result.cushion_in+" in per dimension"));
-   const list=el("ul");for(const item of result.assumptions)list.append(el("li",item));
-   output.append(list);output.append(el("small","Human review required; this is not a released flat or approved quote."));
-   byId("blank-apply").disabled=result.material_cost_each===null;
- }catch(err){
-   invalidateBlank();
-   byId("blank-results").textContent="Unable to estimate: "+err.message;
- }finally{byId("blank-estimate").disabled=false;}
-}
-function applyBlankCost(){
- const result=st.blankEstimate,i=Number(byId("blank-line").value),row=st.rows[i];
- if(!result||byId("blank-line").value===""||i!==result.lineIndex||
-    !row||row.part_number!==result.partNumber||result.material_cost_each===null)return;
- row.material_cost_each=result.material_cost_each;st.quote=null;st.bean=null;
- byId("export").disabled=true;byId("total").textContent="N/A";
- byId("quote-status").textContent="Estimated material cost applied. Review and calculate draft.";
- renderRows();
- byId("blank-results").append(el("p","Applied material cost to "+row.part_number+
-   ". Quote scrap/yield, labor, setup and shop rates remain separate.","detail"));
-}
-for(const id of ["blank-basis","blank-flat-length","blank-flat-width","blank-flat-area",
- "blank-leg-sum","blank-width","blank-thickness","blank-radius","blank-angle",
- "blank-count","blank-k","blank-cushion","blank-price","blank-line"]){
- byId(id).addEventListener("input",invalidateBlank);
- byId(id).addEventListener("change",invalidateBlank);
-}
-byId("blank-estimate").addEventListener("click",estimateBlank);
-byId("blank-apply").addEventListener("click",applyBlankCost);
-
 function body(){return {lines:st.rows.map(row=>({...row}))};}
 async function scan(){
  const chosen=byId("files").files;
@@ -185,15 +80,14 @@ async function scan(){
  try{
    const fd=new FormData();for(const file of chosen)fd.append("files",file,file.name);
    const j=await req("/api/intake",{method:"POST",body:fd});
-   st.documents=j.documents;st.issues=j.issues;st.rows=[];st.quote=null;st.bean=null;
-   invalidateBlank();
+   st.documents=j.documents;st.issues=j.issues;st.rows=[];st.quote=null;st.bean=null;resetBlank();
    for(const d of st.documents){
      if(d.bom&&d.bom.length){for(const row of d.bom)addRow(row);}
      else if(d.kind==="drawing"&&d.fields.part_number)addRow({
        part_number:d.fields.part_number.value,
        quantity:d.fields.quantity?Number(d.fields.quantity.value):1,source:d.filename});
    }
-   renderDocs();renderRows();prefillBlankEvidence();byId("total").textContent="N/A";byId("export").disabled=true;
+   renderDocs();renderRows();byId("total").textContent="N/A";byId("export").disabled=true;
    byId("quote-status").textContent="Cost inputs required.";
    const errors=(j.errors||[]).map(x=>x.filename+": "+x.message);
    status(st.documents.length+" document(s) inspected; "+st.rows.length+" candidate quote line(s)."
@@ -242,11 +136,7 @@ async function core(){
 function save(){
  if(!st.quote)return;
  const payload={schema:"ezstimate.quote-draft.v1",generated_at:new Date().toISOString(),
-   release_state:"not approved",documents:st.documents,inputs:body(),quote:st.quote,
-   material_evidence:st.blankEstimate&&st.rows[st.blankEstimate.lineIndex]&&
-     st.rows[st.blankEstimate.lineIndex].part_number===st.blankEstimate.partNumber&&
-     st.rows[st.blankEstimate.lineIndex].material_cost_each===st.blankEstimate.material_cost_each?
-     st.blankEstimate:null,bean_review:st.bean};
+   release_state:"not approved",documents:st.documents,inputs:body(),quote:st.quote,bean_review:st.bean};
  const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}));
  const a=el("a");a.href=url;a.download="ezstimate-draft.json";document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
@@ -589,5 +479,71 @@ byId("pr-approve").addEventListener("click",prApprove);
 byId("pr-dispatch").addEventListener("click",prDispatch);
 byId("pr-list").addEventListener("click",prList);
 prConnectorStatus();
+
+function resetBlank(){
+ st.blankEstimate=null;st.blankLineIndex=-1;
+ byId("blank-apply").disabled=true;
+ byId("blank-results").textContent="Inputs changed. Recalculate and review before using material cost.";
+}
+function refreshBlankSelector(){
+ const select=byId("blank-line"),prior=select.value;
+ clear(select);
+ const initial=el("option","Select an individual component");initial.value="";select.append(initial);
+ st.rows.forEach((row,i)=>{
+   const option=el("option",(i+1)+": "+(row.part_number||"Unnamed"));
+   option.value=String(i);select.append(option);
+ });
+ select.value=prior!==""&&Number(prior)<st.rows.length?prior:(st.rows.length===1?"0":"");
+ if(!st.rows[Number(select.value)])select.value="";
+ byId("blank-apply").disabled=!(st.blankEstimate&&st.blankEstimate.material_cost_each!==null&&
+   select.value===String(st.blankLineIndex));
+}
+async function calculateBlankEstimate(){
+ const select=byId("blank-line"),index=select.value;
+ if(index===""||!st.rows[Number(index)]){
+   byId("blank-results").textContent="Choose one quote line first.";return;
+ }
+ const mappings={
+   flat_length_in:"blank-flat-length",flat_width_in:"blank-flat-width",
+   flat_area_sq_in:"blank-flat-area",outside_leg_sum_in:"blank-leg-sum",
+   blank_width_in:"blank-width",thickness_in:"blank-thickness",
+   inside_radius_in:"blank-radius",bend_angle_deg:"blank-angle",
+   bend_count:"blank-count",k_factor:"blank-k",cushion_in:"blank-cushion",
+   material_price_per_sq_in:"blank-price"
+ };
+ const payload={scope:"individual_component",basis:byId("blank-basis").value};
+ for(const [key,id] of Object.entries(mappings))payload[key]=byId(id).value.trim();
+ const selectedPart=st.rows[Number(index)].part_number;
+ resetBlank();
+ try{
+   const result=await req("/api/blank/estimate",{
+     method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)
+   });
+   if(index!==select.value||st.rows[Number(index)]?.part_number!==selectedPart){
+     byId("blank-results").textContent="Quote line changed during calculation. Recalculate.";return;
+   }
+   st.blankEstimate=result;st.blankLineIndex=Number(index);
+   byId("blank-results").textContent="Draft blank area: "+result.material_area_sq_in+
+     " sq in; material cost: "+(result.material_cost_each===null?"Unknown":"$"+result.material_cost_each)+
+     ". Review assumptions: "+result.assumptions.join("; ")+". Not approved.";
+   byId("blank-apply").disabled=result.material_cost_each===null;
+ }catch(e){byId("blank-results").textContent="Blank calculation rejected: "+e.message;}
+}
+function applyBlankEstimate(){
+ const index=Number(byId("blank-line").value);
+ if(!st.blankEstimate||index!==st.blankLineIndex||!st.rows[index]||
+    st.blankEstimate.material_cost_each===null)return;
+ st.rows[index].material_cost_each=st.blankEstimate.material_cost_each;
+ st.rows[index].material_cost_basis=st.blankEstimate.basis;
+ st.quote=null;byId("export").disabled=true;byId("total").textContent="N/A";
+ byId("quote-status").textContent="Reviewed material estimate applied; recalculate draft quote.";
+ resetBlank();renderRows();
+ byId("blank-results").textContent="Draft material cost entered for "+(st.rows[index].part_number||"selected line")+". Recalculate quote.";
+}
+byId("blank-panel").addEventListener("input",resetBlank);
+byId("blank-panel").addEventListener("change",resetBlank);
+byId("blank-estimate").addEventListener("click",calculateBlankEstimate);
+byId("blank-apply").addEventListener("click",applyBlankEstimate);
+refreshBlankSelector();
 
 core();
