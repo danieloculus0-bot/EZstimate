@@ -124,7 +124,8 @@ def historical_prices():
         return jsonify(price_history(request.args.get("material_key", ""),
                                     request.args.get("price_unit", ""),
                                     supplier=request.args.get("supplier") or None,
-                                    as_of=request.args.get("as_of") or None))
+                                    as_of=request.args.get("as_of") or None,
+                                    requested_quantity=request.args.get("requested_quantity") or None))
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
 
