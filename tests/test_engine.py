@@ -23,6 +23,33 @@ class EstimateTests(unittest.TestCase):
         self.assertEqual(q["lines"][0]["unit_sell"], "63.75")
         self.assertEqual(q["approval"], "not approved")
 
+    def test_quote_cost_breakdown_reconciles_before_display_rounding(self):
+        q = price_quote({"lines": [{"part_number": "SYN-101", "quantity": 4,
+            "material_cost_each": 10, "labor_hours_each": .5,
+            "shop_rate_per_hour": 60, "outside_cost_each": 5,
+            "setup_cost_total": 20, "scrap_pct": 10, "margin_pct": 20}]})
+        self.assertEqual(q["status"], "draft_review")
+        line = q["lines"][0]
+        self.assertEqual(line["manufacturing_cost"], "204.00")
+        self.assertEqual(line["extended_sell"], "255.00")
+        self.assertEqual(line["cost_breakdown"], {
+            "material_including_scrap": "44.00", "labor": "120.00",
+            "outside_processing": "20.00", "setup": "20.00",
+            "margin_dollars": "51.00", "margin_pct": "20",
+            "scrap_pct": "10",
+            "basis": "extended line; display amounts rounded independently"
+        })
+
+    def test_quote_cost_breakdown_preserves_zero_optional_costs(self):
+        q = price_quote({"lines": [{"part_number": "SYN-102", "quantity": 3,
+            "material_cost_each": 2, "labor_hours_each": 0}]})
+        b = q["lines"][0]["cost_breakdown"]
+        self.assertEqual(b["material_including_scrap"], "6.00")
+        self.assertEqual(b["labor"], "0.00")
+        self.assertEqual(b["outside_processing"], "0.00")
+        self.assertEqual(b["setup"], "0.00")
+        self.assertEqual(b["margin_dollars"], "0.00")
+
     def test_missing_cost_blocks_quote(self):
         q = price_quote({"lines": [{"part_number": "BR-22", "quantity": 3,
                                     "labor_hours_each": 1, "shop_rate_per_hour": 60}]})
