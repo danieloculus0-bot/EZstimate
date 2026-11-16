@@ -67,6 +67,22 @@ class PricingTests(unittest.TestCase):
             with self.subTest(field=field,value=value), self.assertRaises(ValueError):
                 remember_price(self.price(**{field:value}))
 
+    def test_quantity_tier_never_silently_substituted(self):
+        remember_price(self.price(quantity="12", unit_price="220.25"))
+        remember_price(self.price(quantity="100", unit_price="199.00", source_ref="INV-002"))
+        matched = price_history("SHT-STL-0250X60X120-A36-HR", "sheet",
+                                as_of="2026-02-20", requested_quantity="12")
+        self.assertEqual(matched["candidate"]["source_ref"], "INV-001")
+        self.assertTrue(matched["quantity_match"])
+        missing = price_history("SHT-STL-0250X60X120-A36-HR", "sheet",
+                                as_of="2026-02-20", requested_quantity="5")
+        self.assertIsNone(missing["candidate"])
+        self.assertFalse(missing["quantity_match"])
+        self.assertEqual(len(missing["history"]), 2)
+        self.assertFalse(missing["auto_applied"])
+        with self.assertRaises(ValueError):
+            price_history("SHT-STL-0250X60X120-A36-HR", "sheet", requested_quantity="0")
+
     def test_history_as_of_never_peeks_forward(self):
         remember_price(self.price(effective_date="2026-03-05"))
         self.assertIsNone(price_history("SHT-STL-0250X60X120-A36-HR","sheet",
