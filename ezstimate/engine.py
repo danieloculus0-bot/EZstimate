@@ -339,9 +339,23 @@ def price_quote(payload):
             cost = (material*(1+scrap/100)+hours*rate+outside)*qty + setup
             sell = cost/(1-margin/100)
             total += sell
+            material_extended = material * (1 + scrap / 100) * qty
+            labor_extended = hours * rate * qty
+            outside_extended = outside * qty
+            margin_extended = sell - cost
             out.append({"part_number": part, "quantity": int(qty),
                         "manufacturing_cost": money(cost), "unit_sell": money(sell/qty),
                         "extended_sell": money(sell), "source": line.get("source"),
+                        "cost_breakdown": {
+                            "material_including_scrap": money(material_extended),
+                            "labor": money(labor_extended),
+                            "outside_processing": money(outside_extended),
+                            "setup": money(setup),
+                            "margin_dollars": money(margin_extended),
+                            "margin_pct": str(margin),
+                            "scrap_pct": str(scrap),
+                            "basis": "extended line; display amounts rounded independently"
+                        },
                         "status": "draft"})
         except (ValueError, TypeError) as exc:
             issues.append("Line " + str(n) + " (" + part + "): " + str(exc))
