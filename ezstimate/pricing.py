@@ -156,13 +156,18 @@ def remember_price(item, path=None):
         return {"record": dict(record), "new": True}
 
 
-def price_history(material_key, price_unit, currency="USD", supplier=None, as_of=None, path=None):
+def price_history(material_key, price_unit, currency="USD", supplier=None, as_of=None, path=None, requested_quantity=None):
     """Exact material code/unit/currency lookup; return candidates, never alter quote inputs."""
     key = str(material_key).strip().upper()
     unit = str(price_unit).strip().lower()
     if not key or unit not in PRICE_UNITS or currency != "USD":
         raise ValueError("A material_key, supported price_unit, and USD currency are required")
     day = _as_of(as_of)
+    # Observed price tiers are not interchangeable: do not suggest a 1,000-unit
+    # invoice as a valid 1-unit quote without explicit operator review.
+    requested = None
+    if requested_quantity is not None:
+        requested = _number({"quantity": requested_quantity}, "quantity", positive=True)
     params = [key, unit, currency, day]
     sql = """SELECT * FROM purchase_prices
              WHERE material_key=? AND price_unit=? AND currency=? AND effective_date<=?"""
@@ -175,8 +180,11 @@ def price_history(material_key, price_unit, currency="USD", supplier=None, as_of
     for row in rows:
         row["age_days"] = (date.fromisoformat(day)-date.fromisoformat(row["effective_date"])).days
         row["stale_90d"] = row["age_days"] > 90
+    eligible = [row for row in rows if requested is None or Decimal(row["quantity"]) == requested]
     return {"material_key": key, "price_unit": unit, "currency": currency,
-            "as_of": day, "candidate": rows[0] if rows else None,
+            "as_of": day, "requested_quantity": str(requested) if requested is not None else None,
+            "quantity_match": bool(eligible) if requested is not None else None,
+            "candidate": eligible[0] if eligible else None,
             "history": rows, "auto_applied": False,
             "message": "Historical evidence only. Select and verify a price before using it."}
 
