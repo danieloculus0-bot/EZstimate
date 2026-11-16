@@ -104,9 +104,17 @@ async function calculate(){
       "Incomplete: "+(j.issues||[]).join("; ");
    clear(byId("quote-details"));
    for(const line of j.lines){
-     byId("quote-details").append(el("div",
+     const record=el("div",
        line.part_number+" · "+(line.extended_sell===null?"incomplete":"$"+line.extended_sell+" total / $"+line.unit_sell+" each"),
-       "record"));
+       "record");
+     if(line.cost_breakdown){
+       const b=line.cost_breakdown;
+       record.append(el("p","Extended cost: material + scrap $"+b.material_including_scrap+
+         " · labor $"+b.labor+" · outside $"+b.outside_processing+
+         " · setup $"+b.setup+" · margin $"+b.margin_dollars+
+         " ("+b.margin_pct+"% of sell). Display amounts rounded independently."));
+     }
+     byId("quote-details").append(record);
    }
    byId("export").disabled=false;
  }catch(err){status(err.message,true);}
