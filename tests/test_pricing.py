@@ -83,6 +83,27 @@ class PricingTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             price_history("SHT-STL-0250X60X120-A36-HR", "sheet", requested_quantity="0")
 
+    def test_exact_quantity_tier_survives_100_row_history_limit(self):
+        # A valid older tier must not disappear behind newer unrelated tiers.
+        remember_price(self.price(quantity="12", source_ref="INV-BASE"))
+        for index in range(105):
+            remember_price(self.price(
+                quantity=str(1000 + index),
+                source_ref=f"INV-SYN-{index:03d}",
+                effective_date="2026-02-01"))
+        result = price_history(
+            "SHT-STL-0250X60X120-A36-HR", "sheet",
+            as_of="2026-02-20", requested_quantity="12")
+        self.assertEqual(len(result["history"]), 100)
+        self.assertTrue(result["quantity_match"])
+        self.assertEqual(result["candidate"]["source_ref"], "INV-BASE")
+        self.assertEqual(result["candidate"]["age_days"], 49)
+        missing = price_history(
+            "SHT-STL-0250X60X120-A36-HR", "sheet",
+            as_of="2026-02-20", requested_quantity="9999")
+        self.assertIsNone(missing["candidate"])
+        self.assertFalse(missing["quantity_match"])
+
     def test_history_as_of_never_peeks_forward(self):
         remember_price(self.price(effective_date="2026-03-05"))
         self.assertIsNone(price_history("SHT-STL-0250X60X120-A36-HR","sheet",
