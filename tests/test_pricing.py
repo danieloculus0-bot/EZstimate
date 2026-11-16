@@ -132,6 +132,17 @@ class PricingTests(unittest.TestCase):
                 "material_key":"SHT-STL-0250X60X120-A36-HR","price_unit":"sheet"})
             self.assertEqual(response.status_code,200)
             self.assertEqual(response.json["candidate"]["source_ref"],"INV-001")
+            response=client.get("/api/pricing/prices",query_string={
+                "material_key":"SHT-STL-0250X60X120-A36-HR",
+                "price_unit":"sheet", "requested_quantity":"3"})
+            self.assertEqual(response.status_code,200)
+            self.assertIsNone(response.json["candidate"])
+            self.assertFalse(response.json["quantity_match"])
+            response=client.get("/api/pricing/prices",query_string={
+                "material_key":"SHT-STL-0250X60X120-A36-HR",
+                "price_unit":"sheet", "requested_quantity":"12"})
+            self.assertEqual(response.json["candidate"]["source_ref"],"INV-001")
+            self.assertTrue(response.json["quantity_match"])
             response=client.post("/api/pricing/signals",
                 json=self.signal("diesel_usd_per_gallon","3.40","2026-01-15"))
             self.assertEqual(response.status_code,201)
