@@ -184,15 +184,19 @@ def price_history(material_key, price_unit, currency="USD", supplier=None, as_of
     # The 100-row display window may contain only unrelated purchase tiers.
     # Search the exact tier independently so a valid older source is not hidden.
     if requested is not None and not eligible:
+        # SQLite TEXT equality misses equivalent decimal spellings (e.g. 1 vs 1.0).
+        # Compare as Decimal, not floating-point SQL CAST, to preserve exact tiers.
         tier_sql = sql.replace(" ORDER BY effective_date DESC, id DESC LIMIT 100",
-                              " AND quantity=? ORDER BY effective_date DESC, id DESC LIMIT 1")
+                              " ORDER BY effective_date DESC, id DESC")
         with _connect(path) as db:
-            matched = db.execute(tier_sql, [*params, str(requested)]).fetchone()
-        if matched is not None:
-            row = dict(matched)
-            row["age_days"] = (date.fromisoformat(day)-date.fromisoformat(row["effective_date"])).days
-            row["stale_90d"] = row["age_days"] > 90
-            eligible = [row]
+            for matched in db.execute(tier_sql, params):
+                if Decimal(matched["quantity"]) != requested:
+                    continue
+                row = dict(matched)
+                row["age_days"] = (date.fromisoformat(day)-date.fromisoformat(row["effective_date"])).days
+                row["stale_90d"] = row["age_days"] > 90
+                eligible = [row]
+                break
     return {"material_key": key, "price_unit": unit, "currency": currency,
             "as_of": day, "requested_quantity": str(requested) if requested is not None else None,
             "quantity_match": bool(eligible) if requested is not None else None,
