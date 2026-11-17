@@ -104,6 +104,22 @@ class PricingTests(unittest.TestCase):
         self.assertIsNone(missing["candidate"])
         self.assertFalse(missing["quantity_match"])
 
+    def test_decimal_equivalent_tier_beyond_history_limit(self):
+        # Quantity is stored as TEXT; numeric-equivalent tiers must still match.
+        remember_price(self.price(quantity="12.0", source_ref="INV-OLD"))
+        for index in range(105):
+            remember_price(self.price(
+                quantity=str(1000 + index),
+                source_ref=f"INV-SYN-{index:03d}",
+                effective_date="2026-02-01"))
+        result = price_history(
+            "SHT-STL-0250X60X120-A36-HR", "sheet",
+            as_of="2026-02-20", requested_quantity="12")
+        self.assertEqual(len(result["history"]), 100)
+        self.assertTrue(result["quantity_match"])
+        self.assertEqual(result["candidate"]["source_ref"], "INV-OLD")
+        self.assertFalse(result["auto_applied"])
+
     def test_history_as_of_never_peeks_forward(self):
         remember_price(self.price(effective_date="2026-03-05"))
         self.assertIsNone(price_history("SHT-STL-0250X60X120-A36-HR","sheet",
